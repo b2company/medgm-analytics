@@ -53,8 +53,11 @@ const Metas = ({ mes: mesProp, ano: anoProp }) => {
         getMetas(mes, ano),
         getConfigPessoas()
       ]);
+      console.log('🔍 DEBUG - pessoasRes:', pessoasRes);
+      console.log('🔍 DEBUG - pessoasRes.pessoas:', pessoasRes.pessoas);
       setMetas(metasRes.metas || []);
       setPessoas(pessoasRes.pessoas || []);
+      console.log('✅ DEBUG - pessoas state atualizado');
     } catch (error) {
       console.error('Erro ao carregar dados:', error);
     } finally {
@@ -370,6 +373,7 @@ const Metas = ({ mes: mesProp, ano: anoProp }) => {
               disabled={!!editingMeta}
             >
               <option value="">Selecione uma pessoa</option>
+              {console.log('🎯 DEBUG - Renderizando select, pessoas:', pessoas, 'filtradas:', pessoas.filter(p => p.ativo))}
               {pessoas.filter(p => p.ativo).map(p => (
                 <option key={p.id} value={p.id}>
                   {p.nome} ({p.funcao})
