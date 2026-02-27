@@ -4,6 +4,20 @@ export default {
     "./index.html",
     "./src/**/*.{js,ts,jsx,tsx}",
   ],
+  safelist: [
+    // Cores para funis - garantir que sejam incluídas no bundle
+    'bg-purple-500',
+    'bg-purple-600',
+    'bg-pink-500',
+    'bg-pink-600',
+    'bg-indigo-500',
+    'bg-indigo-600',
+    'bg-gray-500',
+    'bg-blue-500',
+    'bg-blue-600',
+    'bg-green-500',
+    'bg-green-600',
+  ],
   theme: {
     extend: {
       colors: {

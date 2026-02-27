@@ -1665,3 +1665,470 @@ async def tracking_diario_social_selling(
 
     except Exception as e:
         raise HTTPException(status_code=500, detail=f"Erro ao buscar tracking diário: {str(e)}")
+
+
+# ==================== DASHBOARD GERAL ====================
+
+@router.get("/dashboard/geral")
+async def dashboard_geral(
+    mes: int,
+    ano: int,
+    funil: str = Query("todos", description="Filtro: todos, SS, Quiz, Indicacao, Webinario"),
+    db: Session = Depends(get_db)
+):
+    """
+    Dashboard Geral - Visão executiva centralizada.
+    Retorna Social Selling (esquerda) + Comercial filtrado por funil (direita) + Projeções.
+    """
+    try:
+        from datetime import datetime
+        import calendar
+        
+        # ========== SOCIAL SELLING ==========
+        
+        # KPIs Social Selling
+        ss_kpis = db.query(
+            func.sum(SocialSellingMetrica.ativacoes).label('ativacoes'),
+            func.sum(SocialSellingMetrica.conversoes).label('conversoes'),
+            func.sum(SocialSellingMetrica.leads_gerados).label('leads')
+        ).filter(
+            SocialSellingMetrica.mes == mes,
+            SocialSellingMetrica.ano == ano
+        ).first()
+        
+        # Metas Social Selling
+        metas_ss_raw = db.query(Meta, Pessoa).join(Pessoa, Meta.pessoa_id == Pessoa.id).filter(
+            Meta.mes == mes,
+            Meta.ano == ano,
+            func.lower(Pessoa.funcao).like('%social%')
+        ).all()
+
+        # Convert to list of Meta objects with pessoa attribute attached
+        metas_ss = []
+        for meta, pessoa in metas_ss_raw:
+            meta.pessoa = pessoa
+            metas_ss.append(meta)
+        
+        meta_ativacoes = sum(m.meta_ativacoes or 0 for m in metas_ss)
+        meta_leads = sum(m.meta_leads or 0 for m in metas_ss)
+        
+        ativacoes = int(ss_kpis.ativacoes or 0)
+        conversoes = int(ss_kpis.conversoes or 0)
+        leads = int(ss_kpis.leads or 0)
+        
+        perc_ativacoes = (ativacoes / meta_ativacoes * 100) if meta_ativacoes > 0 else 0
+        perc_leads = (leads / meta_leads * 100) if meta_leads > 0 else 0
+        tx_ativ_conv = (conversoes / ativacoes * 100) if ativacoes > 0 else 0
+        tx_conv_lead = (leads / conversoes * 100) if conversoes > 0 else 0
+        
+        # Por vendedor (Social Selling)
+        vendedores_ss = db.query(
+            SocialSellingMetrica.vendedor,
+            func.sum(SocialSellingMetrica.leads_gerados).label('leads')
+        ).filter(
+            SocialSellingMetrica.mes == mes,
+            SocialSellingMetrica.ano == ano
+        ).group_by(SocialSellingMetrica.vendedor).all()
+        
+        por_vendedor = []
+        for v in vendedores_ss:
+            meta_vendedor = next((m for m in metas_ss if m.pessoa and m.pessoa.nome == v.vendedor), None)
+            meta_v = meta_vendedor.meta_leads or 0 if meta_vendedor else 0
+            perc_v = (v.leads / meta_v * 100) if meta_v > 0 else 0
+            
+            por_vendedor.append({
+                "vendedor": v.vendedor,
+                "leads": int(v.leads or 0),
+                "meta": meta_v,
+                "perc": round(perc_v, 1),
+                "status": "verde" if perc_v >= 80 else "amarelo" if perc_v >= 40 else "vermelho"
+            })
+        
+        # Acumulado diário de ativações
+        ativacoes_diarias = db.query(
+            func.extract('day', SocialSellingMetrica.data).label('dia'),
+            func.sum(SocialSellingMetrica.ativacoes).label('ativacoes')
+        ).filter(
+            SocialSellingMetrica.mes == mes,
+            SocialSellingMetrica.ano == ano,
+            SocialSellingMetrica.data.isnot(None)
+        ).group_by(func.extract('day', SocialSellingMetrica.data)).order_by('dia').all()
+        
+        acumulado_ativacoes = []
+        acumulado = 0
+        dias_no_mes = calendar.monthrange(ano, mes)[1]
+        meta_diaria_ativ = meta_ativacoes / dias_no_mes if dias_no_mes > 0 else 0
+        
+        for dia_num, ativ in ativacoes_diarias:
+            acumulado += int(ativ or 0)
+            meta_acum = meta_diaria_ativ * int(dia_num)
+            acumulado_ativacoes.append({
+                "dia": int(dia_num),
+                "acumulado": acumulado,
+                "meta_acumulada": round(meta_acum, 0)
+            })
+        
+        # ========== COMERCIAL (com filtro por funil) ==========
+        
+        # Aplicar filtro de funil
+        funil_filter = None
+        if funil and funil.lower() != "todos":
+            funil_filter = funil
+        
+        # SDR (filtrável por funil)
+        sdr_query = db.query(
+            func.sum(SDRMetrica.leads_recebidos).label('leads'),
+            func.sum(SDRMetrica.reunioes_agendadas).label('agendadas'),
+            func.sum(SDRMetrica.reunioes_realizadas).label('realizadas')
+        ).filter(
+            SDRMetrica.mes == mes,
+            SDRMetrica.ano == ano
+        )
+        if funil_filter:
+            sdr_query = sdr_query.filter(SDRMetrica.funil == funil_filter)
+        
+        sdr_kpis = sdr_query.first()
+        
+        # Closer (filtrável por funil)
+        closer_query = db.query(
+            func.sum(CloserMetrica.calls_agendadas).label('calls_agendadas'),
+            func.sum(CloserMetrica.calls_realizadas).label('calls_realizadas'),
+            func.sum(CloserMetrica.vendas).label('vendas'),
+            func.sum(CloserMetrica.faturamento_bruto).label('faturamento')
+        ).filter(
+            CloserMetrica.mes == mes,
+            CloserMetrica.ano == ano
+        )
+        if funil_filter:
+            closer_query = closer_query.filter(CloserMetrica.funil == funil_filter)
+        
+        closer_kpis = closer_query.first()
+        
+        # Metas Comercial
+        metas_sdr_raw = db.query(Meta, Pessoa).join(Pessoa, Meta.pessoa_id == Pessoa.id).filter(
+            Meta.mes == mes,
+            Meta.ano == ano,
+            func.lower(Pessoa.funcao).like('%sdr%')
+        ).all()
+
+        metas_sdr = []
+        for meta, pessoa in metas_sdr_raw:
+            meta.pessoa = pessoa
+            metas_sdr.append(meta)
+
+        metas_closer_raw = db.query(Meta, Pessoa).join(Pessoa, Meta.pessoa_id == Pessoa.id).filter(
+            Meta.mes == mes,
+            Meta.ano == ano,
+            func.lower(Pessoa.funcao).like('%closer%')
+        ).all()
+
+        metas_closer = []
+        for meta, pessoa in metas_closer_raw:
+            meta.pessoa = pessoa
+            metas_closer.append(meta)
+        
+        meta_leads_sdr = sum(m.meta_leads or 0 for m in metas_sdr)
+        meta_reunioes_agend = sum(m.meta_reunioes_agendadas or 0 for m in metas_sdr)
+        meta_reunioes_real = sum(m.meta_reunioes or 0 for m in metas_sdr)
+        meta_vendas = sum(m.meta_vendas or 0 for m in metas_closer)
+        meta_faturamento = sum(m.meta_faturamento or 0 for m in metas_closer)
+        
+        leads_com = int(sdr_kpis.leads or 0)
+        agendadas = int(sdr_kpis.agendadas or 0)
+        realizadas = int(sdr_kpis.realizadas or 0)
+        calls_agend = int(closer_kpis.calls_agendadas or 0)
+        calls_real = int(closer_kpis.calls_realizadas or 0)
+        vendas = int(closer_kpis.vendas or 0)
+        faturamento = float(closer_kpis.faturamento or 0)
+        
+        ticket_medio = (faturamento / vendas) if vendas > 0 else 0
+        
+        # Percentuais
+        perc_leads = (leads_com / meta_leads_sdr * 100) if meta_leads_sdr > 0 else 0
+        perc_agendadas = (agendadas / meta_reunioes_agend * 100) if meta_reunioes_agend > 0 else 0
+        perc_realizadas = (realizadas / meta_reunioes_real * 100) if meta_reunioes_real > 0 else 0
+        perc_vendas = (vendas / meta_vendas * 100) if meta_vendas > 0 else 0
+        perc_faturamento = (faturamento / meta_faturamento * 100) if meta_faturamento > 0 else 0
+        
+        # Taxas de conversão do funil
+        tx_agendamento = (agendadas / leads_com * 100) if leads_com > 0 else 0
+        tx_comparecimento_sdr = (realizadas / agendadas * 100) if agendadas > 0 else 0
+        tx_comparecimento_closer = (calls_real / calls_agend * 100) if calls_agend > 0 else 0
+        tx_conversao = (vendas / calls_real * 100) if calls_real > 0 else 0
+        
+        # Por pessoa (SDR + Closer)
+        por_pessoa = []
+        
+        # SDRs individuais
+        sdrs = db.query(
+            SDRMetrica.sdr,
+            func.sum(SDRMetrica.reunioes_realizadas).label('realizadas')
+        ).filter(
+            SDRMetrica.mes == mes,
+            SDRMetrica.ano == ano
+        )
+        if funil_filter:
+            sdrs = sdrs.filter(SDRMetrica.funil == funil_filter)
+        sdrs = sdrs.group_by(SDRMetrica.sdr).all()
+        
+        for s in sdrs:
+            meta_sdr = next((m for m in metas_sdr if m.pessoa and m.pessoa.nome == s.sdr), None)
+            meta_s = meta_sdr.meta_reunioes or 0 if meta_sdr else 0
+            perc_s = (s.realizadas / meta_s * 100) if meta_s > 0 else 0
+            
+            por_pessoa.append({
+                "pessoa": s.sdr,
+                "area": "SDR",
+                "metrica": "Reuniões Realizadas",
+                "realizado": int(s.realizadas or 0),
+                "meta": meta_s,
+                "perc": round(perc_s, 1),
+                "status": "verde" if perc_s >= 80 else "amarelo" if perc_s >= 40 else "vermelho"
+            })
+        
+        # Closers individuais
+        closers = db.query(
+            CloserMetrica.closer,
+            func.sum(CloserMetrica.vendas).label('vendas'),
+            func.sum(CloserMetrica.faturamento_bruto).label('faturamento')
+        ).filter(
+            CloserMetrica.mes == mes,
+            CloserMetrica.ano == ano
+        )
+        if funil_filter:
+            closers = closers.filter(CloserMetrica.funil == funil_filter)
+        closers = closers.group_by(CloserMetrica.closer).all()
+
+        for c in closers:
+            meta_closer = next((m for m in metas_closer if m.pessoa and m.pessoa.nome == c.closer), None)
+            meta_fat = meta_closer.meta_faturamento or 0 if meta_closer else 0
+            perc_c = (c.faturamento / meta_fat * 100) if meta_fat > 0 else 0
+
+            por_pessoa.append({
+                "pessoa": c.closer,
+                "area": "Closer",
+                "metrica": "Faturamento",
+                "realizado": int(c.faturamento or 0),
+                "meta": int(meta_fat),
+                "perc": round(perc_c, 1),
+                "status": "verde" if perc_c >= 80 else "amarelo" if perc_c >= 40 else "vermelho"
+            })
+        
+        # Acumulados diários (vendas e faturamento) - USANDO APENAS CLOSER_METRICAS
+        closer_query = db.query(
+            func.extract('day', CloserMetrica.data).label('dia'),
+            func.sum(CloserMetrica.vendas).label('vendas'),
+            func.sum(CloserMetrica.faturamento_bruto).label('faturamento')
+        ).filter(
+            CloserMetrica.mes == mes,
+            CloserMetrica.ano == ano,
+            CloserMetrica.data.isnot(None)
+        )
+        if funil_filter:
+            closer_query = closer_query.filter(CloserMetrica.funil == funil_filter)
+
+        closer_diario = closer_query.group_by(func.extract('day', CloserMetrica.data)).order_by('dia').all()
+
+        acumulado_vendas_arr = []
+        acumulado_fat_arr = []
+        vendas_acum = 0
+        fat_acum = 0.0
+        meta_diaria_vendas = meta_vendas / dias_no_mes if dias_no_mes > 0 else 0
+        meta_diaria_fat = meta_faturamento / dias_no_mes if dias_no_mes > 0 else 0
+
+        for dia_num, v_dia, fat_dia in closer_diario:
+            vendas_acum += int(v_dia or 0)
+            fat_acum += float(fat_dia or 0)
+            meta_vendas_acum = meta_diaria_vendas * int(dia_num)
+            meta_fat_acum = meta_diaria_fat * int(dia_num)
+
+            acumulado_vendas_arr.append({
+                "dia": int(dia_num),
+                "acumulado": vendas_acum,
+                "meta_acumulada": round(meta_vendas_acum, 0)
+            })
+            acumulado_fat_arr.append({
+                "dia": int(dia_num),
+                "acumulado": round(fat_acum, 2),
+                "meta_acumulada": round(meta_fat_acum, 2)
+            })
+        
+        # ========== PROJEÇÕES E ALERTAS ==========
+        
+        # Calcular dias úteis
+        hoje = datetime.now()
+        dia_atual = hoje.day if hoje.month == mes and hoje.year == ano else dias_no_mes
+        dias_uteis_passados = dia_atual  # Simplificação: considerar todos os dias como úteis
+        dias_uteis_restantes = max(0, dias_no_mes - dia_atual)
+        dias_uteis_totais = dias_no_mes
+        
+        # Projeções
+        ritmo_vendas = vendas / dias_uteis_passados if dias_uteis_passados > 0 else 0
+        projecao_vendas = round(ritmo_vendas * dias_uteis_totais, 0)
+        ritmo_faturamento = faturamento / dias_uteis_passados if dias_uteis_passados > 0 else 0
+        projecao_faturamento = round(ritmo_faturamento * dias_uteis_totais, 2)
+        
+        # Ritmo necessário
+        vendas_faltam = max(0, meta_vendas - vendas)
+        fat_falta = max(0, meta_faturamento - faturamento)
+        ritmo_necessario_vendas = vendas_faltam / dias_uteis_restantes if dias_uteis_restantes > 0 else 0
+        ritmo_necessario_fat = fat_falta / dias_uteis_restantes if dias_uteis_restantes > 0 else 0
+        
+        # Identificar maior gargalo
+        gargalos = [
+            ("Social Selling", perc_leads, f"Social Selling entregou {perc_leads:.0f}% dos leads"),
+            ("SDR", perc_realizadas, f"SDR realizou {perc_realizadas:.0f}% das reuniões"),
+            ("Closer", perc_vendas, f"Closer atingiu {perc_vendas:.0f}% das vendas")
+        ]
+        gargalo_principal = min(gargalos, key=lambda x: x[1])
+
+        # ========== DADOS DO MÊS ANTERIOR (para comparativo) ==========
+
+        # Calcular mês anterior
+        mes_anterior = 12 if mes == 1 else mes - 1
+        ano_anterior = ano - 1 if mes == 1 else ano
+
+        # Social Selling mês anterior
+        ss_anterior = db.query(
+            func.sum(SocialSellingMetrica.ativacoes).label('ativacoes'),
+            func.sum(SocialSellingMetrica.conversoes).label('conversoes'),
+            func.sum(SocialSellingMetrica.leads_gerados).label('leads')
+        ).filter(
+            SocialSellingMetrica.mes == mes_anterior,
+            SocialSellingMetrica.ano == ano_anterior
+        ).first()
+
+        # Comercial mês anterior (com filtro de funil se aplicável)
+        leads_query_ant = db.query(func.sum(SDRMetrica.leads_recebidos).label('total')).filter(
+            SDRMetrica.mes == mes_anterior,
+            SDRMetrica.ano == ano_anterior
+        )
+        agend_query_ant = db.query(func.sum(SDRMetrica.reunioes_agendadas).label('total')).filter(
+            SDRMetrica.mes == mes_anterior,
+            SDRMetrica.ano == ano_anterior
+        )
+        real_query_ant = db.query(func.sum(SDRMetrica.reunioes_realizadas).label('total')).filter(
+            SDRMetrica.mes == mes_anterior,
+            SDRMetrica.ano == ano_anterior
+        )
+
+        if funil_filter:
+            leads_query_ant = leads_query_ant.filter(SDRMetrica.funil == funil_filter)
+            agend_query_ant = agend_query_ant.filter(SDRMetrica.funil == funil_filter)
+            real_query_ant = real_query_ant.filter(SDRMetrica.funil == funil_filter)
+
+        leads_com_ant = int(leads_query_ant.scalar() or 0)
+        agendadas_ant = int(agend_query_ant.scalar() or 0)
+        realizadas_ant = int(real_query_ant.scalar() or 0)
+
+        # Closer mês anterior (com filtro de funil se aplicável)
+        closer_query_ant = db.query(
+            func.sum(CloserMetrica.calls_agendadas).label('calls_agend'),
+            func.sum(CloserMetrica.calls_realizadas).label('calls_real'),
+            func.sum(CloserMetrica.vendas).label('vendas'),
+            func.sum(CloserMetrica.faturamento_bruto).label('faturamento')
+        ).filter(
+            CloserMetrica.mes == mes_anterior,
+            CloserMetrica.ano == ano_anterior
+        )
+
+        if funil_filter:
+            closer_query_ant = closer_query_ant.filter(CloserMetrica.funil == funil_filter)
+
+        closer_ant = closer_query_ant.first()
+
+        vendas_ant = int(closer_ant.vendas or 0) if closer_ant else 0
+        faturamento_ant = float(closer_ant.faturamento or 0) if closer_ant else 0
+        ticket_medio_ant = (faturamento_ant / vendas_ant) if vendas_ant > 0 else 0
+
+        mes_anterior_data = {
+            "social_selling": {
+                "ativacoes": int(ss_anterior.ativacoes or 0) if ss_anterior else 0,
+                "conversoes": int(ss_anterior.conversoes or 0) if ss_anterior else 0,
+                "leads": int(ss_anterior.leads or 0) if ss_anterior else 0
+            },
+            "comercial": {
+                "leads": leads_com_ant,
+                "reunioes_agendadas": agendadas_ant,
+                "reunioes_realizadas": realizadas_ant,
+                "vendas": vendas_ant,
+                "faturamento": faturamento_ant,
+                "ticket_medio": round(ticket_medio_ant, 2)
+            }
+        }
+
+        return {
+            "mes": mes,
+            "ano": ano,
+            "funil_filtro": funil,
+            "social_selling": {
+                "kpis": {
+                    "ativacoes": {"valor": ativacoes, "meta": meta_ativacoes, "perc": round(perc_ativacoes, 1)},
+                    "conversoes": {"valor": conversoes, "taxa": round(tx_ativ_conv, 2)},
+                    "leads": {"valor": leads, "meta": meta_leads, "perc": round(perc_leads, 1), "faltam": max(0, meta_leads - leads)}
+                },
+                "funil": {
+                    "ativacoes": ativacoes,
+                    "conversoes": conversoes,
+                    "leads": leads,
+                    "tx_ativ_conv": round(tx_ativ_conv, 1),
+                    "tx_conv_lead": round(tx_conv_lead, 1)
+                },
+                "por_vendedor": por_vendedor,
+                "acumulado_ativacoes": acumulado_ativacoes
+            },
+            "comercial": {
+                "kpis": {
+                    "leads": {"valor": leads_com, "meta": meta_leads_sdr, "perc": round(perc_leads, 1)},
+                    "reunioes_agendadas": {"valor": agendadas, "meta": meta_reunioes_agend, "perc": round(perc_agendadas, 1), "faltam": max(0, meta_reunioes_agend - agendadas)},
+                    "reunioes_realizadas": {"valor": realizadas, "meta": meta_reunioes_real, "perc": round(perc_realizadas, 1), "faltam": max(0, meta_reunioes_real - realizadas)},
+                    "calls_agendadas": {"valor": calls_agend},
+                    "calls_realizadas": {"valor": calls_real},
+                    "vendas": {"valor": vendas, "meta": meta_vendas, "perc": round(perc_vendas, 1), "faltam": max(0, meta_vendas - vendas)},
+                    "faturamento": {"valor": round(faturamento, 2), "meta": round(meta_faturamento, 2), "perc": round(perc_faturamento, 1), "faltam": round(max(0, meta_faturamento - faturamento), 2)},
+                    "ticket_medio": round(ticket_medio, 2)
+                },
+                "funil": {
+                    "leads": leads_com,
+                    "reunioes_agendadas": agendadas,
+                    "reunioes_realizadas": realizadas,
+                    "calls_agendadas": calls_agend,
+                    "calls_realizadas": calls_real,
+                    "vendas": vendas,
+                    "faturamento": round(faturamento, 2),
+                    "tx_agendamento": round(tx_agendamento, 1),
+                    "tx_comparecimento_sdr": round(tx_comparecimento_sdr, 1),
+                    "tx_comparecimento_closer": round(tx_comparecimento_closer, 1),
+                    "tx_conversao": round(tx_conversao, 1)
+                },
+                "por_pessoa": por_pessoa,
+                "acumulado_vendas": acumulado_vendas_arr,
+                "acumulado_faturamento": acumulado_fat_arr
+            },
+            "projecoes": {
+                "vendas": {
+                    "projecao": int(projecao_vendas),
+                    "meta": meta_vendas,
+                    "realizado": vendas
+                },
+                "faturamento": {
+                    "projecao": round(projecao_faturamento, 2),
+                    "meta": round(meta_faturamento, 2),
+                    "realizado": round(faturamento, 2)
+                },
+                "dias_uteis_restantes": dias_uteis_restantes,
+                "ritmo_atual": {
+                    "vendas_dia": round(ritmo_vendas, 2),
+                    "faturamento_dia": round(ritmo_faturamento, 2)
+                },
+                "ritmo_necessario": {
+                    "vendas_dia": round(ritmo_necessario_vendas, 2),
+                    "faturamento_dia": round(ritmo_necessario_fat, 2)
+                },
+                "alerta_principal": gargalo_principal[2]
+            },
+            "mes_anterior": mes_anterior_data
+        }
+
+    except Exception as e:
+        raise HTTPException(status_code=500, detail=f"Erro ao buscar dashboard geral: {str(e)}")

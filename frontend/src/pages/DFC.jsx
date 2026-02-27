@@ -3,28 +3,13 @@ import { getDFC, getDFCAnual } from '../services/api';
 import LineChart from '../components/LineChart';
 import BarChart from '../components/BarChart';
 
-const DFC = () => {
-  const [mes, setMes] = useState(new Date().getMonth() + 1);
-  const [ano, setAno] = useState(new Date().getFullYear());
+const DFC = ({ mes: mesProp, ano: anoProp }) => {
+  const mes = mesProp || new Date().getMonth() + 1;
+  const ano = anoProp || new Date().getFullYear();
   const [dados, setDados] = useState(null);
   const [dadosAnuais, setDadosAnuais] = useState(null);
   const [loading, setLoading] = useState(false);
   const [viewMode, setViewMode] = useState('mensal'); // mensal | anual
-
-  const meses = [
-    { value: 1, label: 'Janeiro' },
-    { value: 2, label: 'Fevereiro' },
-    { value: 3, label: 'Marco' },
-    { value: 4, label: 'Abril' },
-    { value: 5, label: 'Maio' },
-    { value: 6, label: 'Junho' },
-    { value: 7, label: 'Julho' },
-    { value: 8, label: 'Agosto' },
-    { value: 9, label: 'Setembro' },
-    { value: 10, label: 'Outubro' },
-    { value: 11, label: 'Novembro' },
-    { value: 12, label: 'Dezembro' },
-  ];
 
   useEffect(() => {
     loadData();
@@ -87,27 +72,6 @@ const DFC = () => {
               Anual
             </button>
           </div>
-
-          {viewMode === 'mensal' && (
-            <select
-              value={mes}
-              onChange={(e) => setMes(parseInt(e.target.value))}
-              className="px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-primary"
-            >
-              {meses.map(m => (
-                <option key={m.value} value={m.value}>{m.label}</option>
-              ))}
-            </select>
-          )}
-          <select
-            value={ano}
-            onChange={(e) => setAno(parseInt(e.target.value))}
-            className="px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-primary"
-          >
-            <option value={2025}>2025</option>
-            <option value={2026}>2026</option>
-            <option value={2027}>2027</option>
-          </select>
         </div>
       </div>
 

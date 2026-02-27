@@ -1,282 +1,405 @@
-#!/usr/bin/env python3
 """
-Importa TODOS os dados de Janeiro e Fevereiro 2026
+Script completo para importar todos os dados do MedGM Analytics.
+Apaga dados antigos e importa CSVs novos.
 """
-import sqlite3
+
 import csv
+import sys
 from datetime import datetime
-import re
-import os
+from pathlib import Path
 
-conn = sqlite3.connect('data/medgm_analytics.db')
-cursor = conn.cursor()
+# Adicionar o diretório backend ao path
+sys.path.insert(0, str(Path(__file__).parent))
 
-def parse_currency(value):
-    """Converte string de moeda brasileira para float"""
+from app.database import SessionLocal
+from app.models.models import (
+    Venda,
+    SocialSellingMetrica, SDRMetrica, CloserMetrica,
+    Pessoa, Meta, Financeiro, KPI
+)
+
+# Diretório dos CSVs
+DATA_DIR = Path("/Users/odavi.feitosa/Desktop/Dados MedGM")
+
+def parse_float(value):
     if not value or value.strip() == '':
         return 0.0
-    cleaned = re.sub(r'[R$\s]', '', value)
-    cleaned = cleaned.replace('.', '').replace(',', '.')
     try:
-        return float(cleaned)
-    except:
+        return float(value.replace(',', '.'))
+    except ValueError:
         return 0.0
 
-def parse_date(date_str):
-    """Converte DD/MM/YYYY para YYYY-MM-DD"""
+def parse_int(value):
+    if not value or value.strip() == '':
+        return 0
     try:
-        dt = datetime.strptime(date_str.strip(), '%d/%m/%Y')
-        return dt.strftime('%Y-%m-%d')
-    except:
+        return int(float(value))
+    except ValueError:
+        return 0
+
+def parse_date(value):
+    if not value or value.strip() == '':
+        return None
+    try:
+        return datetime.strptime(value.strip(), '%Y-%m-%d').date()
+    except ValueError:
         return None
 
-print("🗑️  Limpando dados existentes...")
-cursor.execute("DELETE FROM vendas WHERE mes IN (1, 2) AND ano = 2026")
-cursor.execute("DELETE FROM social_selling_metricas WHERE mes IN (1, 2) AND ano = 2026")
-cursor.execute("DELETE FROM sdr_metricas WHERE mes IN (1, 2) AND ano = 2026")
-cursor.execute("DELETE FROM closer_metricas WHERE mes IN (1, 2) AND ano = 2026")
-conn.commit()
-print("✅ Dados limpos!\n")
+def limpar_dados_antigos(db):
+    print("\n" + "="*60)
+    print("LIMPANDO DADOS ANTIGOS")
+    print("="*60)
 
-# ========== IMPORTAR VENDAS FEVEREIRO ==========
-print("💰 Importando Vendas de Fevereiro...")
-vendas_count = 0
+    tables = [
+        (SocialSellingMetrica, "Social Selling Métricas"),
+        (SDRMetrica, "SDR Métricas"),
+        (CloserMetrica, "Closer Métricas"),
+        (Venda, "Vendas"),
+        (Meta, "Metas"),
+        (Financeiro, "Financeiro"),
+        (KPI, "KPIs"),
+    ]
 
-with open('/Users/odavi.feitosa/Downloads/MedGM_Controle_Comercial[02]_FEV_2026.xlsx - VENDAS.csv', 'r', encoding='utf-8') as f:
-    lines = f.readlines()
-    header_line = lines[2].strip()
-    data_lines = lines[3:]
+    for model, nome in tables:
+        count = db.query(model).count()
+        db.query(model).delete()
+        print(f"✓ {nome}: {count} registros deletados")
 
-    reader = csv.DictReader(data_lines, fieldnames=header_line.split(','))
-    for row in reader:
-        if not row.get('DATA') or not row['DATA'].strip():
-            continue
+    db.commit()
+    print("✓ Limpeza concluída\n")
 
-        data = parse_date(row['DATA'])
-        if not data:
-            continue
+def importar_social_selling(db):
+    print("[1/7] Importando Social Selling...")
+    csv_path = DATA_DIR / "social_selling_diario.csv"
+    count = 0
 
-        cliente = row.get('CLIENTE', '').strip()
-        if not cliente:
-            continue
+    with open(csv_path, 'r', encoding='utf-8') as f:
+        reader = csv.DictReader(f)
+        for row in reader:
+            data_obj = parse_date(row['data'])
+            if not data_obj:
+                continue
 
-        closer = row.get('CLOSER', '--').strip()
-        funil = row.get('FUNIL', '').strip()
-        tipo_receita = row.get('TIPO_RECEITA', '').strip()
-        produto = row.get('PRODUTO', '').strip()
-
-        valor_liquido = parse_currency(row.get('VALOR_LIQUIDO', ''))
-        valor_pago = parse_currency(row.get('VALOR_PAGO', ''))
-        previsto = parse_currency(row.get('PREVISTO', ''))
-        booking = parse_currency(row.get('BOOKING', ''))
-
-        valor_bruto = booking if booking > 0 else previsto
-        valor_final = valor_liquido if valor_liquido > 0 else valor_pago if valor_pago > 0 else previsto if previsto > 0 else booking
-
-        if valor_final <= 0:
-            continue
-
-        cursor.execute("""
-            INSERT INTO vendas (
-                data, cliente, valor_bruto, valor_liquido, valor,
-                funil, vendedor, mes, ano, closer, tipo_receita, produto,
-                booking, previsto, valor_pago
+            metrica = SocialSellingMetrica(
+                data=data_obj,
+                mes=data_obj.month,
+                ano=data_obj.year,
+                vendedor=row['vendedor'].strip(),
+                ativacoes=parse_int(row['ativacoes']),
+                conversoes=parse_int(row['conversoes']),
+                leads_gerados=parse_int(row['leads_gerados'])
             )
-            VALUES (?, ?, ?, ?, ?, ?, ?, 2, 2026, ?, ?, ?, ?, ?, ?)
-        """, (
-            data, cliente, valor_bruto, valor_final, valor_final,
-            funil, closer, closer, tipo_receita, produto,
-            booking, previsto, valor_pago
-        ))
-        vendas_count += 1
+            db.add(metrica)
+            count += 1
 
-conn.commit()
-print(f"✅ {vendas_count} vendas de Fevereiro importadas!\n")
+    db.commit()
+    print(f"✓ {count} registros de Social Selling importados\n")
 
-# ========== IMPORTAR SOCIAL SELLING (JAN + FEV) ==========
-ss_files = [
-    ('/Users/odavi.feitosa/Downloads/dados jan - Social Selling.csv', 'Janeiro'),
-    ('/Users/odavi.feitosa/Downloads/dados fev - Socail Selling.csv', 'Fevereiro')
-]
+def importar_sdr(db):
+    print("[2/7] Importando SDR...")
+    csv_path = DATA_DIR / "sdr_diario.csv"
+    count = 0
 
-for file_path, mes_nome in ss_files:
-    if not os.path.exists(file_path):
-        print(f"⚠️  Arquivo não encontrado: {file_path}")
-        continue
-
-    print(f"📊 Importando Social Selling de {mes_nome}...")
-    ss_count = 0
-
-    with open(file_path, 'r', encoding='utf-8') as f:
+    with open(csv_path, 'r', encoding='utf-8') as f:
         reader = csv.DictReader(f)
         for row in reader:
-            # Detectar formato (Jan tem "Mês", Fev tem "mes")
-            mes = int(row.get('Mês') or row.get('mes'))
-            ano = int(row.get('Ano') or row.get('ano'))
-            vendedor = row.get('Vendedor') or row.get('vendedor')
-            ativacoes = int(row.get('Ativações') or row.get('ativacoes'))
-            conversoes = int(row.get('Conversões') or row.get('conversoes'))
-            leads = int(row.get('Leads Gerados') or row.get('leads_gerados'))
+            data_obj = parse_date(row['data'])
+            if not data_obj:
+                continue
 
-            # Calcular data
-            dia = int(row.get('Dia') or row.get('dia'))
-            data = f"{ano}-{mes:02d}-{dia:02d}"
+            metrica = SDRMetrica(
+                data=data_obj,
+                mes=data_obj.month,
+                ano=data_obj.year,
+                sdr=row['sdr'].strip(),
+                funil=row['funil'].strip(),
+                leads_recebidos=parse_int(row['leads_recebidos']),
+                reunioes_agendadas=parse_int(row['reunioes_agendadas']),
+                reunioes_realizadas=parse_int(row['reunioes_realizadas'])
+            )
+            db.add(metrica)
+            count += 1
 
-            tx_ativ_conv = round((conversoes / ativacoes * 100) if ativacoes > 0 else 0, 2)
-            tx_conv_lead = round((leads / conversoes * 100) if conversoes > 0 else 0, 2)
+    db.commit()
+    print(f"✓ {count} registros de SDR importados\n")
 
-            cursor.execute("""
-                INSERT INTO social_selling_metricas
-                (vendedor, mes, ano, data, ativacoes, conversoes, leads_gerados, tx_ativ_conv, tx_conv_lead)
-                VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?)
-            """, (vendedor, mes, ano, data, ativacoes, conversoes, leads, tx_ativ_conv, tx_conv_lead))
-            ss_count += 1
+def importar_closer(db):
+    print("[3/7] Importando Closer...")
+    csv_path = DATA_DIR / "closer_diario.csv"
+    count = 0
 
-    conn.commit()
-    print(f"✅ {ss_count} registros de Social Selling ({mes_nome}) importados!")
-
-print()
-
-# ========== IMPORTAR SDR (JAN + FEV) ==========
-sdr_files = [
-    ('/Users/odavi.feitosa/Downloads/dados jan - SDR.csv', 'Janeiro'),
-    ('/Users/odavi.feitosa/Downloads/dados fev - SDR.csv', 'Fevereiro')
-]
-
-for file_path, mes_nome in sdr_files:
-    if not os.path.exists(file_path):
-        print(f"⚠️  Arquivo não encontrado: {file_path}")
-        continue
-
-    print(f"📞 Importando SDR de {mes_nome}...")
-    sdr_count = 0
-
-    with open(file_path, 'r', encoding='utf-8') as f:
+    with open(csv_path, 'r', encoding='utf-8') as f:
         reader = csv.DictReader(f)
         for row in reader:
-            mes = int(row.get('Mês') or row.get('mes'))
-            ano = int(row.get('Ano') or row.get('Ano'))
-            sdr = row.get('SDR') or row.get('sdr')
-            funil = row.get('Funil') or row.get('Funil')
+            data_obj = parse_date(row['data'])
+            if not data_obj:
+                continue
 
-            dia = int(row.get('Dia') or row.get('Dia'))
-            data = f"{ano}-{mes:02d}-{dia:02d}"
+            faturamento_bruto = parse_float(row['faturamento_bruto'])
 
-            # Jan: Leads, Tentativas, Conexões, Calls Agendadas
-            # Fev: Leads Recebidos, Reunioes Agendadas, Reunioes Realizadas
-            leads_recebidos = int(row.get('Leads') or row.get('Leads Recebidos') or 0)
-            reunioes_agendadas = int(row.get('Calls Agendadas') or row.get('Reunioes Agendadas') or 0)
-            reunioes_realizadas = int(row.get('Reunioes Realizadas') or 0)
+            metrica = CloserMetrica(
+                data=data_obj,
+                mes=data_obj.month,
+                ano=data_obj.year,
+                closer=row['closer'].strip(),
+                funil=row['funil'].strip(),
+                calls_agendadas=parse_int(row['calls_agendadas']),
+                calls_realizadas=parse_int(row['calls_realizadas']),
+                vendas=parse_int(row['vendas']),
+                faturamento=faturamento_bruto,
+                faturamento_bruto=faturamento_bruto,
+                faturamento_liquido=faturamento_bruto
+            )
+            db.add(metrica)
+            count += 1
 
-            tx_agendamento = round((reunioes_agendadas / leads_recebidos * 100) if leads_recebidos > 0 else 0, 2)
-            tx_comparecimento = round((reunioes_realizadas / reunioes_agendadas * 100) if reunioes_agendadas > 0 else 0, 2)
+    db.commit()
+    print(f"✓ {count} registros de Closer importados\n")
 
-            cursor.execute("""
-                INSERT INTO sdr_metricas
-                (sdr, mes, ano, data, funil, leads_recebidos, reunioes_agendadas, reunioes_realizadas,
-                 tx_agendamento, tx_comparecimento)
-                VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
-            """, (sdr, mes, ano, data, funil, leads_recebidos, reunioes_agendadas, reunioes_realizadas,
-                  tx_agendamento, tx_comparecimento))
-            sdr_count += 1
+def importar_vendas(db):
+    print("[4/7] Importando Vendas...")
+    csv_path = DATA_DIR / "vendas.csv"
+    count = 0
 
-    conn.commit()
-    print(f"✅ {sdr_count} registros de SDR ({mes_nome}) importados!")
-
-print()
-
-# ========== IMPORTAR CLOSER (JAN + FEV) ==========
-closer_files = [
-    ('/Users/odavi.feitosa/Downloads/dados jan - Closer.csv', 'Janeiro'),
-    ('/Users/odavi.feitosa/Downloads/dados fev - Closer.csv', 'Fevereiro')
-]
-
-for file_path, mes_nome in closer_files:
-    if not os.path.exists(file_path):
-        print(f"⚠️  Arquivo não encontrado: {file_path}")
-        continue
-
-    print(f"🎯 Importando Closer de {mes_nome}...")
-    closer_count = 0
-
-    with open(file_path, 'r', encoding='utf-8') as f:
+    with open(csv_path, 'r', encoding='utf-8') as f:
         reader = csv.DictReader(f)
         for row in reader:
-            mes = int(row.get('Mês') or row.get('mes'))
-            ano = int(row.get('Ano') or row.get('ano'))
-            closer = row.get('Closer') or row.get('closer')
-            funil = row.get('Funil') or row.get('funil')
+            data_obj = parse_date(row['data'])
+            if not data_obj:
+                continue
 
-            dia = int(row.get('Dia') or row.get('dia'))
-            data = f"{ano}-{mes:02d}-{dia:02d}"
+            booking = parse_float(row['booking'])
+            valor_previsto = parse_float(row['valor_previsto'])
+            valor_pago = parse_float(row['valor_pago'])
+            valor_liquido = parse_float(row['valor_liquido'])
 
-            calls_agendadas = int(row.get('Calls Agendadas') or row.get('calls_agendadas') or 0)
-            calls_realizadas = int(row.get('Calls Realizadas') or row.get('calls_realizadas') or 0)
-            vendas = int(row.get('Vendas') or row.get('vendas') or 0)
+            valor_bruto = booking if booking > 0 else valor_pago
+            valor = valor_liquido if valor_liquido > 0 else valor_pago
 
-            # Usar Faturamento Líquido
-            faturamento = parse_currency(row.get('Faturamento Líquido', '0'))
+            venda = Venda(
+                data=data_obj,
+                mes=data_obj.month,
+                ano=data_obj.year,
+                cliente=row['cliente'].strip(),
+                closer=row['closer'].strip() if row['closer'].strip() != '--' else None,
+                funil=row['funil'].strip(),
+                tipo_receita=row['tipo_receita'].strip(),
+                produto=row['produto'].strip(),
+                booking=booking,
+                valor_bruto=valor_bruto,
+                valor_pago=valor_pago,
+                valor_liquido=valor_liquido,
+                previsto=valor_previsto,
+                valor=valor
+            )
+            db.add(venda)
+            count += 1
 
-            tx_comparecimento = round((calls_realizadas / calls_agendadas * 100) if calls_agendadas > 0 else 0, 2)
-            tx_conversao = round((vendas / calls_realizadas * 100) if calls_realizadas > 0 else 0, 2)
-            ticket_medio = round(faturamento / vendas if vendas > 0 else 0, 2)
+    db.commit()
+    print(f"✓ {count} vendas importadas\n")
 
-            cursor.execute("""
-                INSERT INTO closer_metricas
-                (closer, mes, ano, data, funil, calls_agendadas, calls_realizadas, vendas,
-                 faturamento, tx_comparecimento, tx_conversao, ticket_medio)
-                VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
-            """, (closer, mes, ano, data, funil, calls_agendadas, calls_realizadas, vendas,
-                  faturamento, tx_comparecimento, tx_conversao, ticket_medio))
-            closer_count += 1
+def importar_metas(db):
+    print("[5/7] Importando Metas...")
+    pessoas_map = {}
 
-    conn.commit()
-    print(f"✅ {closer_count} registros de Closer ({mes_nome}) importados!")
+    # Ler equipe_metas.csv para fevereiro
+    csv_path = DATA_DIR / "equipe_metas.csv"
+    with open(csv_path, 'r', encoding='utf-8-sig') as f:
+        reader = csv.DictReader(f)
+        for row in reader:
+            nome = row['nome'].strip()
+            cargo = row['cargo'].strip()
 
-print()
+            pessoa = db.query(Pessoa).filter(Pessoa.nome == nome).first()
+            if not pessoa:
+                pessoa = Pessoa(nome=nome, funcao=cargo, ativo=True)
+                db.add(pessoa)
+                db.flush()
 
-# ========== RESUMO FINAL ==========
-print("="*70)
-print("✅ IMPORTAÇÃO COMPLETA - TODOS OS DADOS")
-print("="*70)
+            pessoas_map[nome] = pessoa.id
 
-for mes_num, mes_nome in [(1, 'JANEIRO'), (2, 'FEVEREIRO')]:
-    print(f"\n📊 {mes_nome} 2026:")
+    # Ler metas_jan2026.csv para janeiro
+    csv_path_jan = DATA_DIR / "metas_jan2026.csv"
+    with open(csv_path_jan, 'r', encoding='utf-8-sig') as f:
+        reader = csv.DictReader(f)
+        for row in reader:
+            nome = row['nome'].strip()
 
-    # Vendas
-    cursor.execute("""
-        SELECT COUNT(*), COALESCE(SUM(valor_liquido), 0)
-        FROM vendas WHERE mes = ? AND ano = 2026
-    """, (mes_num,))
-    v = cursor.fetchone()
-    print(f"   💰 Vendas: {v[0]} | Faturamento Líquido: R$ {v[1]:,.2f}")
+            pessoa = db.query(Pessoa).filter(Pessoa.nome == nome).first()
+            if not pessoa:
+                membro_id = row.get('membro_id', '')
+                if 'EQ1' in membro_id or 'EQ2' in membro_id:
+                    cargo = 'Social Selling'
+                elif 'EQ3' in membro_id:
+                    cargo = 'SDR'
+                elif 'EQ4' in membro_id or 'EQ5' in membro_id:
+                    cargo = 'Closer'
+                else:
+                    cargo = 'Indefinido'
 
-    # Social Selling
-    cursor.execute("""
-        SELECT COUNT(*), COALESCE(SUM(ativacoes), 0), COALESCE(SUM(conversoes), 0), COALESCE(SUM(leads_gerados), 0)
-        FROM social_selling_metricas WHERE mes = ? AND ano = 2026
-    """, (mes_num,))
-    ss = cursor.fetchone()
-    print(f"   📱 Social Selling: {ss[0]} dias | {ss[1]:,} ativações | {ss[2]} conversões | {ss[3]} leads")
+                pessoa = Pessoa(nome=nome, funcao=cargo, ativo=True)
+                db.add(pessoa)
+                db.flush()
 
-    # SDR
-    cursor.execute("""
-        SELECT COUNT(*), COALESCE(SUM(leads_recebidos), 0), COALESCE(SUM(reunioes_agendadas), 0)
-        FROM sdr_metricas WHERE mes = ? AND ano = 2026
-    """, (mes_num,))
-    sdr = cursor.fetchone()
-    print(f"   📞 SDR: {sdr[0]} dias | {sdr[1]} leads | {sdr[2]} reuniões agendadas")
+            pessoas_map[nome] = pessoa.id
 
-    # Closer
-    cursor.execute("""
-        SELECT COUNT(*), COALESCE(SUM(calls_realizadas), 0), COALESCE(SUM(vendas), 0), COALESCE(SUM(faturamento), 0)
-        FROM closer_metricas WHERE mes = ? AND ano = 2026
-    """, (mes_num,))
-    c = cursor.fetchone()
-    print(f"   🎯 Closer: {c[0]} dias | {c[1]} calls | {c[2]} vendas | R$ {c[3]:,.2f}")
+    db.commit()
+    print(f"✓ {len(pessoas_map)} pessoas garantidas no banco")
 
-print(f"\n{'='*70}")
-print(f"🚀 Acesse: http://localhost:5176")
-print(f"{'='*70}\n")
+    # Importar metas de janeiro
+    count_jan = 0
+    with open(csv_path_jan, 'r', encoding='utf-8-sig') as f:
+        reader = csv.DictReader(f)
+        for row in reader:
+            nome = row['nome'].strip()
+            pessoa_id = pessoas_map.get(nome)
 
-conn.close()
+            meta = Meta(
+                mes=1,
+                ano=2026,
+                tipo='individual',
+                pessoa_id=pessoa_id,
+                meta_ativacoes=parse_int(row.get('meta_ativacoes', 0)),
+                meta_leads=parse_int(row.get('meta_leads', 0)),
+                meta_reunioes=parse_int(row.get('meta_reunioes', 0)),
+                meta_vendas=parse_int(row.get('meta_vendas', 0)),
+                meta_faturamento=parse_float(row.get('meta_faturamento', 0))
+            )
+            db.add(meta)
+            count_jan += 1
+
+    # Importar metas de fevereiro
+    count_fev = 0
+    with open(csv_path, 'r', encoding='utf-8-sig') as f:
+        reader = csv.DictReader(f)
+        for row in reader:
+            nome = row['nome'].strip()
+            pessoa_id = pessoas_map.get(nome)
+
+            meta = Meta(
+                mes=2,
+                ano=2026,
+                tipo='individual',
+                pessoa_id=pessoa_id,
+                meta_ativacoes=parse_int(row.get('meta_ativacoes', 0)),
+                meta_leads=parse_int(row.get('meta_leads', 0)),
+                meta_reunioes=parse_int(row.get('meta_reunioes', 0)),
+                meta_vendas=parse_int(row.get('meta_vendas', 0)),
+                meta_faturamento=parse_float(row.get('meta_faturamento', 0))
+            )
+            db.add(meta)
+            count_fev += 1
+
+    db.commit()
+    print(f"✓ {count_jan} metas de Janeiro importadas")
+    print(f"✓ {count_fev} metas de Fevereiro importadas\n")
+
+def importar_saidas(db):
+    print("[6/7] Importando Saídas (Financeiro)...")
+    csv_path = DATA_DIR / "saidas.csv"
+    count = 0
+
+    with open(csv_path, 'r', encoding='utf-8') as f:
+        reader = csv.DictReader(f)
+        for row in reader:
+            mes_ref = row['mes_ref'].strip()
+            ano, mes = mes_ref.split('-')
+            ano = int(ano)
+            mes = int(mes)
+
+            data_obj = parse_date(row['data']) if row['data'].strip() else None
+
+            previsto = parse_float(row['previsto'])
+            realizado = parse_float(row['realizado'])
+
+            if previsto > 0:
+                saida_prev = Financeiro(
+                    tipo='saida',
+                    descricao=row['descricao'].strip(),
+                    custo=row['categoria_custo'].strip() if row['categoria_custo'].strip() else None,
+                    tipo_custo=row['tipo'].strip() if row['tipo'].strip() else None,
+                    centro_custo=row['centro_custo'].strip() if row['centro_custo'].strip() else None,
+                    categoria=row['categoria'].strip(),
+                    valor=previsto,
+                    data=data_obj,
+                    mes=mes,
+                    ano=ano,
+                    previsto_realizado='previsto'
+                )
+                db.add(saida_prev)
+                count += 1
+
+            if realizado > 0:
+                saida_real = Financeiro(
+                    tipo='saida',
+                    descricao=row['descricao'].strip(),
+                    custo=row['categoria_custo'].strip() if row['categoria_custo'].strip() else None,
+                    tipo_custo=row['tipo'].strip() if row['tipo'].strip() else None,
+                    centro_custo=row['centro_custo'].strip() if row['centro_custo'].strip() else None,
+                    categoria=row['categoria'].strip(),
+                    valor=realizado,
+                    data=data_obj,
+                    mes=mes,
+                    ano=ano,
+                    previsto_realizado='realizado'
+                )
+                db.add(saida_real)
+                count += 1
+
+    db.commit()
+    print(f"✓ {count} registros de Saídas importados\n")
+
+def importar_resumo_mensal(db):
+    print("[7/7] Importando Resumo Mensal (KPIs)...")
+    csv_path = DATA_DIR / "resumo_mensal.csv"
+    count = 0
+
+    with open(csv_path, 'r', encoding='utf-8') as f:
+        reader = csv.DictReader(f)
+        for row in reader:
+            mes_ref = row['mes_ref'].strip()
+            ano, mes = mes_ref.split('-')
+            ano = int(ano)
+            mes = int(mes)
+
+            kpi = KPI(
+                mes=mes,
+                ano=ano,
+                faturamento=parse_float(row['total_entradas_realizado']),
+                saldo=parse_float(row['saldo_final_realizado'])
+            )
+            db.add(kpi)
+            count += 1
+
+    db.commit()
+    print(f"✓ {count} resumos mensais importados\n")
+
+if __name__ == "__main__":
+    print("="*60)
+    print("IMPORTAÇÃO COMPLETA - MEDGM ANALYTICS")
+    print("="*60)
+
+    db = SessionLocal()
+
+    try:
+        limpar_dados_antigos(db)
+        importar_social_selling(db)
+        importar_sdr(db)
+        importar_closer(db)
+        importar_vendas(db)
+        importar_metas(db)
+        importar_saidas(db)
+        importar_resumo_mensal(db)
+
+        print("="*60)
+        print("✅ IMPORTAÇÃO CONCLUÍDA COM SUCESSO!")
+        print("="*60)
+
+    except Exception as e:
+        db.rollback()
+        print(f"\n❌ ERRO durante importação: {e}")
+        import traceback
+        traceback.print_exc()
+        sys.exit(1)
+    finally:
+        db.close()

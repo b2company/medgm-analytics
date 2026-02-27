@@ -3,6 +3,9 @@ import React from 'react';
 const PainelRealTime = ({ dataFinanceiro, dataComercial, metaEmpresa, mes, ano }) => {
   if (!dataFinanceiro || !dataComercial) return null;
 
+  // Debug: verificar dados das 3 abas comerciais
+  console.log('📊 PainelRealTime - metricas_comerciais:', dataComercial.metricas_comerciais);
+
   const formatCurrency = (value) => {
     return new Intl.NumberFormat('pt-BR', { style: 'currency', currency: 'BRL' }).format(value || 0);
   };
@@ -17,12 +20,18 @@ const PainelRealTime = ({ dataFinanceiro, dataComercial, metaEmpresa, mes, ano }
   };
 
   // Cálculos principais
-  const faturamentoRealizado = dataComercial.faturamento_total || 0;
+  // Usar faturamento do Closer (mais preciso) se disponível, senão usar de Vendas
+  const faturamentoRealizado = dataComercial.metricas_comerciais?.closer?.faturamento_bruto || dataComercial.faturamento_total || 0;
   const metaMensal = (metaEmpresa?.meta_faturamento_anual || 5000000) / 12;
   const percAtingimento = (faturamentoRealizado / metaMensal) * 100;
 
   const lucroOperacional = dataFinanceiro.dre?.lucro_liquido || 0;
   const saldoCaixa = dataFinanceiro.saldo || 0;
+
+  // Métricas das 3 abas comerciais
+  const socialSelling = dataComercial.metricas_comerciais?.social_selling || {};
+  const sdr = dataComercial.metricas_comerciais?.sdr || {};
+  const closer = dataComercial.metricas_comerciais?.closer || {};
 
   // Determinar cor do indicador
   let statusColor = 'red';
@@ -101,42 +110,68 @@ const PainelRealTime = ({ dataFinanceiro, dataComercial, metaEmpresa, mes, ano }
           )}
         </div>
 
-        {/* Cards Laterais */}
+        {/* Cards Laterais - Funil Comercial */}
         <div className="space-y-4">
-          {/* Lucro Operacional */}
+          {/* Social Selling */}
           <div className="bg-gray-800/50 backdrop-blur rounded-xl p-6 border border-gray-700">
-            <div className="text-gray-400 text-sm mb-2">Lucro Operacional</div>
-            <div className={`text-3xl font-bold ${
-              lucroOperacional >= 0 ? 'text-green-400' : 'text-red-400'
-            }`}>
-              {formatShortCurrency(lucroOperacional)}
+            <div className="text-amber-400 text-sm font-semibold mb-3 flex items-center gap-2">
+              <span>📱</span> Social Selling
             </div>
-            <div className="text-gray-500 text-xs mt-2">
-              Margem: {(dataFinanceiro.dre?.margem_liquida_pct || 0).toFixed(1)}%
+            <div className="space-y-2">
+              <div className="flex justify-between items-center">
+                <span className="text-gray-400 text-xs">Ativações</span>
+                <span className="text-lg font-bold text-white">{socialSelling.ativacoes || 0}</span>
+              </div>
+              <div className="flex justify-between items-center">
+                <span className="text-gray-400 text-xs">Conversões</span>
+                <span className="text-lg font-bold text-white">{socialSelling.conversoes || 0}</span>
+              </div>
+              <div className="flex justify-between items-center">
+                <span className="text-gray-400 text-xs">Leads</span>
+                <span className="text-lg font-bold text-green-400">{socialSelling.leads || 0}</span>
+              </div>
             </div>
           </div>
 
-          {/* Saldo de Caixa */}
+          {/* SDR */}
           <div className="bg-gray-800/50 backdrop-blur rounded-xl p-6 border border-gray-700">
-            <div className="text-gray-400 text-sm mb-2">Saldo de Caixa</div>
-            <div className={`text-3xl font-bold ${
-              saldoCaixa >= 0 ? 'text-blue-400' : 'text-red-400'
-            }`}>
-              {formatShortCurrency(saldoCaixa)}
+            <div className="text-blue-400 text-sm font-semibold mb-3 flex items-center gap-2">
+              <span>📞</span> SDR
             </div>
-            <div className="text-gray-500 text-xs mt-2">
-              Disponível agora
+            <div className="space-y-2">
+              <div className="flex justify-between items-center">
+                <span className="text-gray-400 text-xs">Leads Recebidos</span>
+                <span className="text-lg font-bold text-white">{sdr.leads_recebidos || 0}</span>
+              </div>
+              <div className="flex justify-between items-center">
+                <span className="text-gray-400 text-xs">Reuniões Agendadas</span>
+                <span className="text-lg font-bold text-white">{sdr.reunioes_agendadas || 0}</span>
+              </div>
+              <div className="flex justify-between items-center">
+                <span className="text-gray-400 text-xs">Reuniões Realizadas</span>
+                <span className="text-lg font-bold text-green-400">{sdr.reunioes_realizadas || 0}</span>
+              </div>
             </div>
           </div>
 
-          {/* Total de Vendas */}
+          {/* Closer */}
           <div className="bg-gray-800/50 backdrop-blur rounded-xl p-6 border border-gray-700">
-            <div className="text-gray-400 text-sm mb-2">Vendas no Mês</div>
-            <div className="text-3xl font-bold text-purple-400">
-              {dataComercial.total_vendas || 0}
+            <div className="text-green-400 text-sm font-semibold mb-3 flex items-center gap-2">
+              <span>🎯</span> Closer
             </div>
-            <div className="text-gray-500 text-xs mt-2">
-              Ticket: {formatShortCurrency(dataComercial.ticket_medio || 0)}
+            <div className="space-y-2">
+              <div className="flex justify-between items-center">
+                <span className="text-gray-400 text-xs">Calls Realizadas</span>
+                <span className="text-lg font-bold text-white">{closer.calls_realizadas || 0}</span>
+              </div>
+              <div className="flex justify-between items-center">
+                <span className="text-gray-400 text-xs">Vendas</span>
+                <span className="text-lg font-bold text-green-400">{closer.vendas || 0}</span>
+              </div>
+              <div className="flex justify-between items-center">
+                <span className="text-gray-400 text-xs">Faturamento</span>
+                <span className="text-lg font-bold text-green-400">{formatShortCurrency(closer.faturamento_bruto || 0)}</span>
+              </div>
             </div>
           </div>
         </div>

@@ -9,7 +9,7 @@ from typing import Dict, Any, Optional
 from datetime import datetime
 
 from app.database import get_db
-from app.models.models import Venda, Financeiro, KPI
+from app.models.models import Venda, Financeiro, KPI, SocialSellingMetrica, SDRMetrica, CloserMetrica
 
 router = APIRouter(prefix="/metrics", tags=["metrics"])
 
@@ -39,7 +39,7 @@ async def get_vendas(
                 "id": v.id,
                 "data": v.data.isoformat(),
                 "cliente": v.cliente,
-                "valor": float(v.valor),
+                "valor": float(v.valor_bruto or v.valor or 0),
                 "funil": v.funil,
                 "vendedor": v.vendedor,
                 "mes": v.mes,
@@ -355,17 +355,18 @@ async def get_financeiro_detalhado(
     - Comparação com mês anterior
     """
 
-    # 1. BUSCAR TODAS AS ENTRADAS COM DETALHES
+    # 1. BUSCAR TODAS AS ENTRADAS COM DETALHES (apenas realizado)
     entradas = db.query(Financeiro).filter(
         Financeiro.mes == mes,
         Financeiro.ano == ano,
-        Financeiro.tipo == 'entrada'
+        Financeiro.tipo == 'entrada',
+        Financeiro.previsto_realizado == 'realizado'
     ).order_by(Financeiro.data.desc()).all()
 
     entradas_lista = [
         {
             "id": e.id,
-            "data": e.data.isoformat(),
+            "data": e.data.isoformat() if e.data else None,
             "categoria": e.categoria,
             "descricao": e.descricao or "",
             "valor": float(e.valor),
@@ -374,17 +375,18 @@ async def get_financeiro_detalhado(
         for e in entradas
     ]
 
-    # 2. BUSCAR TODAS AS SAÍDAS COM DETALHES
+    # 2. BUSCAR TODAS AS SAÍDAS COM DETALHES (apenas realizado)
     saidas = db.query(Financeiro).filter(
         Financeiro.mes == mes,
         Financeiro.ano == ano,
-        Financeiro.tipo == 'saida'
+        Financeiro.tipo == 'saida',
+        Financeiro.previsto_realizado == 'realizado'
     ).order_by(Financeiro.data.desc()).all()
 
     saidas_lista = [
         {
             "id": s.id,
-            "data": s.data.isoformat(),
+            "data": s.data.isoformat() if s.data else None,
             "categoria": s.categoria,
             "descricao": s.descricao or "",
             "valor": float(s.valor),
@@ -393,14 +395,15 @@ async def get_financeiro_detalhado(
         for s in saidas
     ]
 
-    # 3. SUBTOTAIS POR CATEGORIA
+    # 3. SUBTOTAIS POR CATEGORIA (apenas realizado)
     entradas_por_categoria = db.query(
         Financeiro.categoria,
         func.sum(Financeiro.valor).label('total')
     ).filter(
         Financeiro.mes == mes,
         Financeiro.ano == ano,
-        Financeiro.tipo == 'entrada'
+        Financeiro.tipo == 'entrada',
+        Financeiro.previsto_realizado == 'realizado'
     ).group_by(Financeiro.categoria).all()
 
     saidas_por_categoria = db.query(
@@ -409,16 +412,34 @@ async def get_financeiro_detalhado(
     ).filter(
         Financeiro.mes == mes,
         Financeiro.ano == ano,
-        Financeiro.tipo == 'saida'
+        Financeiro.tipo == 'saida',
+        Financeiro.previsto_realizado == 'realizado'
     ).group_by(Financeiro.categoria).all()
 
     entradas_subtotais = {cat: float(total) for cat, total in entradas_por_categoria}
     saidas_subtotais = {cat: float(total) for cat, total in saidas_por_categoria}
 
-    # 4. TOTAIS
+    # 4. TOTAIS E SALDO COM SALDO_INICIAL
     total_entradas = sum(entradas_subtotais.values())
     total_saidas = sum(saidas_subtotais.values())
-    saldo = total_entradas - total_saidas
+
+    # Buscar saldo_inicial (= saldo_final do mês anterior)
+    mes_anterior = mes - 1
+    ano_anterior = ano
+    if mes_anterior <= 0:
+        mes_anterior = 12
+        ano_anterior -= 1
+
+    # Buscar KPI do mês anterior para obter saldo_final (que vira saldo_inicial deste mês)
+    kpi_anterior = db.query(KPI).filter(
+        KPI.mes == mes_anterior,
+        KPI.ano == ano_anterior
+    ).first()
+
+    saldo_inicial = float(kpi_anterior.saldo) if kpi_anterior and kpi_anterior.saldo else 0.0
+
+    # Calcular saldo_final: saldo_inicial + entradas - saídas
+    saldo = saldo_inicial + total_entradas - total_saidas
 
     # 5. DRE SIMPLIFICADO
     # Identificar receitas (vendas/serviços)
@@ -451,26 +472,25 @@ async def get_financeiro_detalhado(
     }
 
     # 6. COMPARAÇÃO COM MÊS ANTERIOR
-    mes_anterior = mes - 1
-    ano_anterior = ano
-    if mes_anterior <= 0:
-        mes_anterior = 12
-        ano_anterior -= 1
+    # (mes_anterior e ano_anterior já foram calculados acima para saldo_inicial)
 
-    # Totais mês anterior
+    # Totais mês anterior (apenas realizado)
     entradas_anterior = db.query(func.sum(Financeiro.valor)).filter(
         Financeiro.mes == mes_anterior,
         Financeiro.ano == ano_anterior,
-        Financeiro.tipo == 'entrada'
+        Financeiro.tipo == 'entrada',
+        Financeiro.previsto_realizado == 'realizado'
     ).scalar() or 0
 
     saidas_anterior = db.query(func.sum(Financeiro.valor)).filter(
         Financeiro.mes == mes_anterior,
         Financeiro.ano == ano_anterior,
-        Financeiro.tipo == 'saida'
+        Financeiro.tipo == 'saida',
+        Financeiro.previsto_realizado == 'realizado'
     ).scalar() or 0
 
-    saldo_anterior = float(entradas_anterior) - float(saidas_anterior)
+    # Saldo anterior = KPI.saldo do mês anterior (já temos em kpi_anterior)
+    saldo_anterior = float(kpi_anterior.saldo) if kpi_anterior and kpi_anterior.saldo else 0.0
 
     # Calcular variações percentuais
     variacao_entradas = ((total_entradas - float(entradas_anterior)) / float(entradas_anterior) * 100) if entradas_anterior > 0 else 0
@@ -508,9 +528,11 @@ async def get_financeiro_detalhado(
         "saidas": saidas_lista,
         "entradas_por_categoria": entradas_subtotais,
         "saidas_por_categoria": saidas_subtotais,
+        "saldo_inicial": round(saldo_inicial, 2),
         "total_entradas": round(total_entradas, 2),
         "total_saidas": round(total_saidas, 2),
         "saldo": round(saldo, 2),
+        "lucro_operacional": round(total_entradas - total_saidas, 2),
         "dre": dre,
         "comparacao_mes_anterior": comparacao_mes_anterior,
         "receita_recorrente": receita_recorrente
@@ -544,7 +566,7 @@ async def get_comercial_detalhado(
             "id": v.id,
             "data": v.data.isoformat(),
             "cliente": v.cliente,
-            "valor": float(v.valor),
+            "valor": float(v.valor_bruto or v.valor or 0),
             "funil": v.funil,
             "vendedor": v.vendedor
         }
@@ -553,7 +575,7 @@ async def get_comercial_detalhado(
 
     # 2. TOTAIS GERAIS
     total_vendas = len(vendas)
-    faturamento_total = sum(float(v.valor) for v in vendas)
+    faturamento_total = sum(float(v.valor_bruto or v.valor or 0) for v in vendas)
     ticket_medio = (faturamento_total / total_vendas) if total_vendas > 0 else 0
 
     # 3. PERFORMANCE POR VENDEDOR
@@ -648,6 +670,57 @@ async def get_comercial_detalhado(
         "variacao_ticket_pct": round(variacao_ticket, 2)
     }
 
+    # 6. MÉTRICAS DAS 3 ABAS COMERCIAIS (Social Selling, SDR, Closer)
+    # Social Selling
+    social_selling = db.query(
+        func.sum(SocialSellingMetrica.ativacoes).label('ativacoes'),
+        func.sum(SocialSellingMetrica.conversoes).label('conversoes'),
+        func.sum(SocialSellingMetrica.leads_gerados).label('leads')
+    ).filter(
+        SocialSellingMetrica.mes == mes,
+        SocialSellingMetrica.ano == ano
+    ).first()
+
+    # SDR
+    sdr = db.query(
+        func.sum(SDRMetrica.leads_recebidos).label('leads_recebidos'),
+        func.sum(SDRMetrica.reunioes_agendadas).label('reunioes_agendadas'),
+        func.sum(SDRMetrica.reunioes_realizadas).label('reunioes_realizadas')
+    ).filter(
+        SDRMetrica.mes == mes,
+        SDRMetrica.ano == ano
+    ).first()
+
+    # Closer
+    closer = db.query(
+        func.sum(CloserMetrica.calls_agendadas).label('calls_agendadas'),
+        func.sum(CloserMetrica.calls_realizadas).label('calls_realizadas'),
+        func.sum(CloserMetrica.vendas).label('vendas'),
+        func.sum(CloserMetrica.faturamento_bruto).label('faturamento_bruto')
+    ).filter(
+        CloserMetrica.mes == mes,
+        CloserMetrica.ano == ano
+    ).first()
+
+    metricas_comerciais = {
+        "social_selling": {
+            "ativacoes": int(social_selling.ativacoes or 0),
+            "conversoes": int(social_selling.conversoes or 0),
+            "leads": int(social_selling.leads or 0)
+        },
+        "sdr": {
+            "leads_recebidos": int(sdr.leads_recebidos or 0),
+            "reunioes_agendadas": int(sdr.reunioes_agendadas or 0),
+            "reunioes_realizadas": int(sdr.reunioes_realizadas or 0)
+        },
+        "closer": {
+            "calls_agendadas": int(closer.calls_agendadas or 0),
+            "calls_realizadas": int(closer.calls_realizadas or 0),
+            "vendas": int(closer.vendas or 0),
+            "faturamento_bruto": round(float(closer.faturamento_bruto or 0), 2)
+        }
+    }
+
     return {
         "mes": mes,
         "ano": ano,
@@ -658,7 +731,8 @@ async def get_comercial_detalhado(
         "por_vendedor": vendedores_lista,
         "por_canal": canais_lista,
         "melhor_vendedor": melhor_vendedor,
-        "comparacao_mes_anterior": comparacao_mes_anterior
+        "comparacao_mes_anterior": comparacao_mes_anterior,
+        "metricas_comerciais": metricas_comerciais
     }
 
 

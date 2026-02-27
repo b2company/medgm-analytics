@@ -35,16 +35,16 @@ const KPICardWithProgress = ({
   const textColor = getTextColor(percent);
 
   return (
-    <div className="bg-white rounded-2xl shadow-lg p-6 hover:shadow-xl transition-all duration-300 border border-gray-50">
-      <div className="flex items-start justify-between mb-4">
-        <div className="flex items-center gap-3">
+    <div className="bg-white rounded-xl shadow-md p-5 hover:shadow-lg transition-all duration-300 border border-gray-100 min-h-[180px] flex flex-col">
+      <div className="flex items-start justify-between mb-3">
+        <div className="flex items-center gap-2.5">
           {icon && (
-            <div className="w-12 h-12 bg-gradient-to-br from-amber-400 to-amber-600 rounded-xl flex items-center justify-center shadow-md">
-              <span className="text-white text-xl">{icon}</span>
+            <div className="w-10 h-10 min-w-[44px] min-h-[44px] bg-gradient-to-br from-amber-400 to-amber-600 rounded-lg flex items-center justify-center shadow-sm flex-shrink-0">
+              <span className="text-white text-lg">{icon}</span>
             </div>
           )}
-          <div>
-            <h3 className="text-sm font-medium text-gray-500 uppercase tracking-wide flex items-center gap-1">
+          <div className="flex-1 min-w-0">
+            <h3 className="text-sm md:text-xs font-semibold text-gray-600 uppercase tracking-wider flex items-center gap-1">
               {title}
               {info && <InfoTooltip text={info} />}
             </h3>
@@ -57,25 +57,30 @@ const KPICardWithProgress = ({
         </div>
       </div>
 
-      <div className="mb-3">
-        <p className="text-4xl font-bold text-gray-900 break-words">{formatter(value)}</p>
+      <div className="mb-3 flex-grow">
+        <p className="text-2xl md:text-3xl font-bold text-gray-900 break-words">{formatter(value)}</p>
         {subtitle && (
-          <p className="text-sm text-gray-500 mt-1">{subtitle}</p>
+          <p className="text-sm md:text-xs text-gray-500 mt-0.5 break-words">{subtitle}</p>
         )}
       </div>
 
       {showProgress && meta && (
-        <div className="space-y-2 mt-4">
-          <div className="flex items-center justify-between mb-1">
-            <span className="text-xs text-gray-500">Meta: {formatter(meta)}</span>
-            <span className={`text-sm font-bold ${textColor}`}>
+        <div className="space-y-1.5 mt-auto">
+          <div className="flex items-center justify-between gap-2">
+            <span className="text-sm md:text-xs text-gray-500 truncate">Meta: {formatter(meta)}</span>
+            <span className={`text-sm md:text-xs font-bold ${textColor} flex-shrink-0`}>
               {percent.toFixed(0)}%
             </span>
           </div>
-          <div className="w-full bg-gray-100 rounded-full h-2.5 overflow-hidden">
+          <div className="w-full bg-gray-100 rounded-full h-2.5 md:h-2 overflow-hidden">
             <div
-              className={`${progressColor} h-2.5 rounded-full transition-all duration-700 ease-out shadow-sm`}
+              className={`${progressColor} h-full rounded-full transition-all duration-700 ease-out shadow-sm`}
               style={{ width: `${Math.min(percent, 100)}%` }}
+              role="progressbar"
+              aria-valuenow={Math.min(percent, 100)}
+              aria-valuemin="0"
+              aria-valuemax="100"
+              aria-label={`${percent.toFixed(0)}% da meta atingida`}
             />
           </div>
         </div>

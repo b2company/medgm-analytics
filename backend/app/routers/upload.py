@@ -3,7 +3,7 @@ from fastapi.responses import StreamingResponse
 from sqlalchemy.orm import Session
 from fastapi import Depends
 from app.database import get_db
-from app.models.models import SocialSellingMetrica, SDRMetrica, CloserMetrica
+from app.models.models import SocialSellingMetrica, SDRMetrica, CloserMetrica, Venda, Financeiro
 from datetime import datetime
 import pandas as pd
 import io
@@ -29,11 +29,11 @@ async def download_template(tipo: str):
 
     if tipo == "social-selling":
         ws.title = "Social Selling"
-        headers = ["Data", "Vendedor", "Funil", "Ativações", "Conversões", "Leads Gerados"]
+        headers = ["Data", "Vendedor", "Ativações", "Conversões", "Leads Gerados"]
         example_data = [
-            ["2026-02-01", "Jessica Leopoldino", "SS", 250, 3, 2],
-            ["2026-02-01", "Artur Gabriel", "SS", 180, 2, 1],
-            ["2026-02-01", "Karina Carla", "Quiz", 120, 1, 1]
+            ["2026-02-01", "Jessica Leopoldino", 250, 3, 2],
+            ["2026-02-01", "Artur Gabriel", 180, 2, 1],
+            ["2026-02-01", "Karina Carla", 120, 1, 1]
         ]
     elif tipo == "sdr":
         ws.title = "SDR"
@@ -49,8 +49,23 @@ async def download_template(tipo: str):
             ["2026-02-01", "Fabio Lima", "SS", 2, 2, 1, 1, 8000, 6000],
             ["2026-02-02", "Mona Garcia", "SS", 1, 1, 0, 0, 0, 0]
         ]
+    elif tipo == "vendas":
+        ws.title = "Vendas"
+        headers = ["Data", "Cliente", "Closer", "Funil", "Tipo Receita", "Produto", "Previsto", "Valor Bruto", "Valor Líquido"]
+        example_data = [
+            ["2026-02-01", "Dr. João Silva", "Fabio Lima", "Social Selling", "Recorrência", "Assessoria Start", 5000, 8000, 6000],
+            ["2026-02-05", "Dra. Maria Santos", "Mona Garcia", "Quiz", "Venda", "Programa Ativ", 12000, 15000, 12000]
+        ]
+    elif tipo == "financeiro":
+        ws.title = "Financeiro"
+        headers = ["Data", "Tipo", "Categoria", "Descrição", "Valor", "Previsto/Realizado", "Tipo Custo", "Centro Custo"]
+        example_data = [
+            ["2026-02-01", "entrada", "Assessoria", "Venda Cliente X", 5000, "realizado", "", ""],
+            ["2026-02-05", "saida", "Equipe", "Salário Closer", 3000, "realizado", "Fixo", "Comercial"],
+            ["2026-02-10", "saida", "Ferramenta", "Assinatura CRM", 500, "realizado", "Fixo", "Operação"]
+        ]
     else:
-        raise HTTPException(status_code=400, detail="Tipo inválido. Use: social-selling, sdr ou closer")
+        raise HTTPException(status_code=400, detail="Tipo inválido. Use: social-selling, sdr, closer, vendas ou financeiro")
 
     # Adicionar cabeçalhos
     for col_num, header in enumerate(headers, 1):
@@ -109,7 +124,7 @@ async def upload_metrics(
 
         if tipo == "social-selling":
             # Validar colunas
-            required_cols = ["Data", "Vendedor", "Funil", "Ativações", "Conversões", "Leads Gerados"]
+            required_cols = ["Data", "Vendedor", "Ativações", "Conversões", "Leads Gerados"]
             if not all(col in df.columns for col in required_cols):
                 raise HTTPException(status_code=400, detail=f"Planilha deve ter as colunas: {', '.join(required_cols)}")
 
@@ -121,7 +136,6 @@ async def upload_metrics(
                         mes=data.month,
                         ano=data.year,
                         vendedor=str(row["Vendedor"]),
-                        funil=str(row["Funil"]),
                         ativacoes=int(row["Ativações"]),
                         conversoes=int(row["Conversões"]),
                         leads_gerados=int(row["Leads Gerados"])
@@ -197,6 +211,64 @@ async def upload_metrics(
                 except Exception as e:
                     erros.append(f"Linha {idx + 2}: {str(e)}")
 
+        elif tipo == "vendas":
+            required_cols = ["Data", "Cliente", "Closer", "Funil", "Tipo Receita", "Produto", "Previsto", "Valor Bruto", "Valor Líquido"]
+            if not all(col in df.columns for col in required_cols):
+                raise HTTPException(status_code=400, detail=f"Planilha deve ter as colunas: {', '.join(required_cols)}")
+
+            for idx, row in df.iterrows():
+                try:
+                    data = pd.to_datetime(row["Data"]).date()
+
+                    venda = Venda(
+                        data=data,
+                        mes=data.month,
+                        ano=data.year,
+                        cliente=str(row["Cliente"]) if pd.notna(row["Cliente"]) else None,
+                        closer=str(row["Closer"]) if pd.notna(row["Closer"]) else None,
+                        funil=str(row["Funil"]) if pd.notna(row["Funil"]) else None,
+                        tipo_receita=str(row["Tipo Receita"]) if pd.notna(row["Tipo Receita"]) else None,
+                        produto=str(row["Produto"]) if pd.notna(row["Produto"]) else None,
+                        previsto=float(row["Previsto"]) if pd.notna(row["Previsto"]) else 0.0,
+                        valor_bruto=float(row["Valor Bruto"]) if pd.notna(row["Valor Bruto"]) else 0.0,
+                        valor_liquido=float(row["Valor Líquido"]) if pd.notna(row["Valor Líquido"]) else 0.0,
+                    )
+                    db.add(venda)
+                    importados += 1
+                except Exception as e:
+                    erros.append(f"Linha {idx + 2}: {str(e)}")
+
+        elif tipo == "financeiro":
+            required_cols = ["Data", "Tipo", "Categoria", "Descrição", "Valor", "Previsto/Realizado"]
+            if not all(col in df.columns for col in required_cols):
+                raise HTTPException(status_code=400, detail=f"Planilha deve ter as colunas: {', '.join(required_cols)}")
+
+            for idx, row in df.iterrows():
+                try:
+                    data = pd.to_datetime(row["Data"]).date()
+                    tipo = str(row["Tipo"]).lower()
+
+                    if tipo not in ['entrada', 'saida']:
+                        erros.append(f"Linha {idx + 2}: Tipo deve ser 'entrada' ou 'saida'")
+                        continue
+
+                    financeiro = Financeiro(
+                        data=data,
+                        mes=data.month,
+                        ano=data.year,
+                        tipo=tipo,
+                        categoria=str(row["Categoria"]) if pd.notna(row["Categoria"]) else None,
+                        descricao=str(row["Descrição"]) if pd.notna(row["Descrição"]) else None,
+                        valor=float(row["Valor"]),
+                        previsto_realizado=str(row["Previsto/Realizado"]).lower() if pd.notna(row["Previsto/Realizado"]) else "realizado",
+                        tipo_custo=str(row["Tipo Custo"]) if "Tipo Custo" in df.columns and pd.notna(row.get("Tipo Custo")) else None,
+                        centro_custo=str(row["Centro Custo"]) if "Centro Custo" in df.columns and pd.notna(row.get("Centro Custo")) else None,
+                    )
+                    db.add(financeiro)
+                    importados += 1
+                except Exception as e:
+                    erros.append(f"Linha {idx + 2}: {str(e)}")
+
         else:
             raise HTTPException(status_code=400, detail="Tipo inválido")
 
@@ -206,7 +278,7 @@ async def upload_metrics(
             "message": "Upload processado com sucesso",
             "importados": importados,
             "erros": len(erros),
-            "detalhes_erros": erros[:10]  # Limitar a 10 erros para não sobrecarregar
+            "detalhes_erros": erros  # Retornar todos os erros para debug
         }
 
     except Exception as e:

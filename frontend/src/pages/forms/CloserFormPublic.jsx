@@ -15,7 +15,6 @@ const CloserFormPublic = () => {
     calls_agendadas: 0,
     calls_realizadas: 0,
     vendas: 0,
-    booking: 0,
     faturamento_bruto: 0,
     faturamento_liquido: 0
   });
@@ -48,7 +47,7 @@ const CloserFormPublic = () => {
       ...prev,
       [name]: ['calls_agendadas', 'calls_realizadas', 'vendas', 'mes', 'ano'].includes(name)
         ? parseInt(value) || 0
-        : ['booking', 'faturamento_bruto', 'faturamento_liquido'].includes(name)
+        : ['faturamento_bruto', 'faturamento_liquido'].includes(name)
         ? parseFloat(value) || 0
         : value
     }));
@@ -73,7 +72,6 @@ const CloserFormPublic = () => {
         calls_agendadas: 0,
         calls_realizadas: 0,
         vendas: 0,
-        booking: 0,
         faturamento_bruto: 0,
         faturamento_liquido: 0
       });
@@ -230,20 +228,6 @@ const CloserFormPublic = () => {
                 name="vendas"
                 value={formData.vendas}
                 onChange={handleChange}
-                className="w-full border border-gray-300 rounded-lg px-4 py-2 focus:ring-2 focus:ring-purple-500 focus:border-transparent"
-                min="0"
-                required
-              />
-            </div>
-
-            <div>
-              <label className="block text-sm font-medium text-gray-700 mb-2">Booking (R$) *</label>
-              <input
-                type="number"
-                name="booking"
-                value={formData.booking}
-                onChange={handleChange}
-                step="0.01"
                 className="w-full border border-gray-300 rounded-lg px-4 py-2 focus:ring-2 focus:ring-purple-500 focus:border-transparent"
                 min="0"
                 required

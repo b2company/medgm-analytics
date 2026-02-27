@@ -1,7 +1,7 @@
 from fastapi import APIRouter, HTTPException, Depends, Query
 from sqlalchemy.orm import Session
 from app.database import get_db
-from app.models.models import Venda
+from app.models.models import Venda, Financeiro
 from pydantic import BaseModel
 from typing import Optional
 from datetime import date
@@ -18,7 +18,7 @@ class VendaCreate(BaseModel):
     produto: Optional[str] = None
     booking: Optional[float] = 0.0
     previsto: Optional[float] = 0.0
-    valor_pago: Optional[float] = 0.0
+    valor_bruto: Optional[float] = 0.0
     valor_liquido: Optional[float] = 0.0
 
 class VendaUpdate(BaseModel):
@@ -30,7 +30,7 @@ class VendaUpdate(BaseModel):
     produto: Optional[str] = None
     booking: Optional[float] = None
     previsto: Optional[float] = None
-    valor_pago: Optional[float] = None
+    valor_bruto: Optional[float] = None
     valor_liquido: Optional[float] = None
 
 
@@ -38,7 +38,7 @@ class VendaUpdate(BaseModel):
 
 @router.post("")
 async def create_venda(item: VendaCreate, db: Session = Depends(get_db)):
-    """Cria uma nova venda"""
+    """Cria uma nova venda e registra automaticamente no Financeiro"""
     try:
         # Extrair mes e ano da data
         mes = item.data.month
@@ -55,22 +55,37 @@ async def create_venda(item: VendaCreate, db: Session = Depends(get_db)):
             produto=item.produto,
             booking=item.booking or 0.0,
             previsto=item.previsto or 0.0,
-            valor_pago=item.valor_pago or 0.0,
-            valor_liquido=item.valor_liquido or 0.0,
-            valor_bruto=item.booking or item.previsto or item.valor_pago or 0.0  # Usar booking como bruto
+            valor_bruto=item.valor_bruto or item.booking or item.previsto or 0.0,
+            valor_liquido=item.valor_liquido or 0.0
         )
 
         db.add(nova_venda)
         db.commit()
         db.refresh(nova_venda)
 
+        # 🔄 INTEGRAÇÃO: Criar entrada automática no Financeiro
+        entrada_financeiro = Financeiro(
+            tipo='entrada',
+            produto=nova_venda.produto,
+            valor=nova_venda.valor_liquido or nova_venda.valor_bruto,
+            data=nova_venda.data,
+            mes=mes,
+            ano=ano,
+            descricao=f"VENDA-{nova_venda.id} - {nova_venda.cliente or 'Cliente'}",
+            previsto_realizado='realizado'
+        )
+
+        db.add(entrada_financeiro)
+        db.commit()
+
         return {
             "id": nova_venda.id,
-            "message": "Venda criada com sucesso",
+            "message": "Venda criada com sucesso e registrada no Financeiro",
             "data": {
                 "id": nova_venda.id,
                 "cliente": nova_venda.cliente,
-                "valor_liquido": nova_venda.valor_liquido
+                "valor_liquido": nova_venda.valor_liquido,
+                "financeiro_id": entrada_financeiro.id
             }
         }
     except Exception as e:
@@ -111,7 +126,7 @@ async def list_vendas(
             "produto": v.produto,
             "booking": v.booking or 0.0,
             "previsto": v.previsto or 0.0,
-            "valor_pago": v.valor_pago or 0.0,
+            "valor_bruto": v.valor_bruto or 0.0,
             "valor_liquido": v.valor_liquido or 0.0,
             "mes": v.mes,
             "ano": v.ano
@@ -138,7 +153,7 @@ async def get_venda(id: int, db: Session = Depends(get_db)):
         "produto": venda.produto,
         "booking": venda.booking or 0.0,
         "previsto": venda.previsto or 0.0,
-        "valor_pago": venda.valor_pago or 0.0,
+        "valor_bruto": venda.valor_bruto or 0.0,
         "valor_liquido": venda.valor_liquido or 0.0,
         "mes": venda.mes,
         "ano": venda.ano
@@ -147,7 +162,7 @@ async def get_venda(id: int, db: Session = Depends(get_db)):
 
 @router.put("/{id}")
 async def update_venda(id: int, item: VendaUpdate, db: Session = Depends(get_db)):
-    """Atualiza uma venda existente"""
+    """Atualiza uma venda existente e sincroniza com o Financeiro"""
     try:
         venda = db.query(Venda).filter(Venda.id == id).first()
         if not venda:
@@ -172,19 +187,35 @@ async def update_venda(id: int, item: VendaUpdate, db: Session = Depends(get_db)
             venda.booking = item.booking
         if item.previsto is not None:
             venda.previsto = item.previsto
-        if item.valor_pago is not None:
-            venda.valor_pago = item.valor_pago
+        if item.valor_bruto is not None:
+            venda.valor_bruto = item.valor_bruto
         if item.valor_liquido is not None:
             venda.valor_liquido = item.valor_liquido
 
-        # Recalcular valor_bruto
-        venda.valor_bruto = venda.booking or venda.previsto or venda.valor_pago or 0.0
+        # Recalcular valor_bruto apenas se não foi fornecido explicitamente
+        if item.valor_bruto is None:
+            venda.valor_bruto = venda.booking or venda.previsto or 0.0
 
         db.commit()
         db.refresh(venda)
 
+        # 🔄 INTEGRAÇÃO: Atualizar entrada correspondente no Financeiro
+        entrada_financeiro = db.query(Financeiro).filter(
+            Financeiro.descricao.like(f"VENDA-{venda.id} - %")
+        ).first()
+
+        if entrada_financeiro:
+            # Atualizar entrada existente
+            entrada_financeiro.produto = venda.produto
+            entrada_financeiro.valor = venda.valor_liquido or venda.valor_bruto
+            entrada_financeiro.data = venda.data
+            entrada_financeiro.mes = venda.mes
+            entrada_financeiro.ano = venda.ano
+            entrada_financeiro.descricao = f"VENDA-{venda.id} - {venda.cliente or 'Cliente'}"
+            db.commit()
+
         return {
-            "message": "Venda atualizada com sucesso",
+            "message": "Venda atualizada com sucesso e sincronizada com o Financeiro",
             "data": {
                 "id": venda.id,
                 "cliente": venda.cliente,
@@ -200,7 +231,7 @@ async def update_venda(id: int, item: VendaUpdate, db: Session = Depends(get_db)
 
 @router.delete("/{id}")
 async def delete_venda(id: int, db: Session = Depends(get_db)):
-    """Deleta uma venda"""
+    """Deleta uma venda e remove do Financeiro"""
     try:
         venda = db.query(Venda).filter(Venda.id == id).first()
         if not venda:
@@ -212,11 +243,19 @@ async def delete_venda(id: int, db: Session = Depends(get_db)):
             "valor_liquido": venda.valor_liquido
         }
 
+        # 🔄 INTEGRAÇÃO: Deletar entrada correspondente no Financeiro
+        entrada_financeiro = db.query(Financeiro).filter(
+            Financeiro.descricao.like(f"VENDA-{venda.id} - %")
+        ).first()
+
+        if entrada_financeiro:
+            db.delete(entrada_financeiro)
+
         db.delete(venda)
         db.commit()
 
         return {
-            "message": "Venda deletada com sucesso",
+            "message": "Venda deletada com sucesso e removida do Financeiro",
             "deleted": info
         }
     except HTTPException:

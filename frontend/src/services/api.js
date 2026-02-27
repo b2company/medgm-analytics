@@ -355,6 +355,11 @@ export const getTrackingDiarioSS = async (mes, ano, vendedor = null) => {
   return response.data;
 };
 
+export const getDashboardGeral = async (mes, ano, funil = 'todos') => {
+  const response = await api.get('/comercial/dashboard/geral', { params: { mes, ano, funil } });
+  return response.data;
+};
+
 // ==================== VENDAS ====================
 
 export const getVendas = async (mes = null, ano = null, closer = null, funil = null) => {
@@ -364,7 +369,7 @@ export const getVendas = async (mes = null, ano = null, closer = null, funil = n
   if (closer) params.closer = closer;
   if (funil) params.funil = funil;
   const response = await api.get('/vendas', { params });
-  return response.data;
+  return response.data || []; // API retorna array direto
 };
 
 export const getVenda = async (id) => {

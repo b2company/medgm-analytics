@@ -86,12 +86,16 @@ const MetricCardModern = ({
         ${scheme.bg} rounded-xl p-6 shadow-md
         hover:shadow-xl transition-all duration-200
         ${onClick ? 'cursor-pointer' : ''}
+        min-h-[180px] flex flex-col
         ${className}
       `}
+      role={onClick ? 'button' : 'article'}
+      tabIndex={onClick ? 0 : undefined}
+      onKeyDown={onClick ? (e) => e.key === 'Enter' && onClick() : undefined}
     >
       {/* Header com Ícone */}
       <div className="flex items-start justify-between mb-4">
-        <div className={`${scheme.iconBg} p-3 rounded-lg`}>
+        <div className={`${scheme.iconBg} p-3 rounded-lg min-w-[44px] min-h-[44px] flex items-center justify-center`}>
           {Icon && <Icon className={`w-6 h-6 ${scheme.icon}`} />}
         </div>
 
@@ -105,14 +109,14 @@ const MetricCardModern = ({
       </div>
 
       {/* Título */}
-      <p className="text-sm font-medium text-gray-600 mb-2">{title}</p>
+      <p className="text-sm md:text-base font-medium text-gray-600 mb-2">{title}</p>
 
       {/* Valor Principal */}
-      <p className={`text-3xl font-bold ${scheme.value} mb-1`}>{value}</p>
+      <p className={`text-2xl md:text-3xl font-bold ${scheme.value} mb-1 break-words flex-grow`}>{value}</p>
 
       {/* Subtitle */}
       {subtitle && (
-        <p className="text-sm text-gray-500">{subtitle}</p>
+        <p className="text-sm text-gray-500 mt-auto">{subtitle}</p>
       )}
     </div>
   );

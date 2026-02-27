@@ -109,7 +109,17 @@ const Dashboard = () => {
         }
       }
 
-      if (activeTab === 'financeiro') {
+      // Na Visão Geral, sempre carregar Financeiro E Comercial
+      if (activeSubTab === 'visao-geral') {
+        const [fin, com] = await Promise.all([
+          getFinanceiroDetalhado(mes, ano),
+          getComercialDetalhado(mes, ano)
+        ]);
+        setDataFinanceiro(fin);
+        setDataComercial(com);
+        const fluxo = await getFluxoCaixa(6, mes, ano);
+        setDataFluxoCaixa(fluxo);
+      } else if (activeTab === 'financeiro') {
         const fin = await getFinanceiroDetalhado(mes, ano);
         setDataFinanceiro(fin);
         const fluxo = await getFluxoCaixa(6, mes, ano);

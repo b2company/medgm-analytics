@@ -13,7 +13,7 @@ const VendasFormPublic = () => {
     funil: 'SS',
     tipo_receita: 'Venda',
     produto: '',
-    booking: 0,
+    valor_bruto: 0,
     previsto: 0,
     valor_pago: 0,
     valor_liquido: 0
@@ -48,7 +48,7 @@ const VendasFormPublic = () => {
     const { name, value } = e.target;
     setFormData(prev => ({
       ...prev,
-      [name]: ['booking', 'previsto', 'valor_pago', 'valor_liquido'].includes(name)
+      [name]: ['valor_bruto', 'previsto', 'valor_pago', 'valor_liquido'].includes(name)
         ? parseFloat(value) || 0
         : value
     }));
@@ -71,7 +71,7 @@ const VendasFormPublic = () => {
         funil: 'SS',
         tipo_receita: 'Venda',
         produto: '',
-        booking: 0,
+        valor_bruto: 0,
         previsto: 0,
         valor_pago: 0,
         valor_liquido: 0
@@ -211,11 +211,11 @@ const VendasFormPublic = () => {
 
             <div className="grid grid-cols-2 gap-4">
               <div>
-                <label className="block text-sm font-medium text-gray-700 mb-2">Booking (R$)</label>
+                <label className="block text-sm font-medium text-gray-700 mb-2">Valor Bruto (R$)</label>
                 <input
                   type="number"
-                  name="booking"
-                  value={formData.booking}
+                  name="valor_bruto"
+                  value={formData.valor_bruto}
                   onChange={handleChange}
                   step="0.01"
                   className="w-full border border-gray-300 rounded-lg px-4 py-2 focus:ring-2 focus:ring-orange-500 focus:border-transparent"

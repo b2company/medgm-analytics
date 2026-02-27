@@ -4,8 +4,14 @@ FastAPI main application for MedGM Analytics.
 
 from fastapi import FastAPI
 from fastapi.middleware.cors import CORSMiddleware
+from dotenv import load_dotenv
+import os
+
 from app.database import init_db
 from app.routers import upload, metrics, crud, comercial, config, export, import_csv, funil, metas, demonstrativos, projecao, vendas
+
+# Carrega variáveis de ambiente
+load_dotenv()
 
 # Initialize FastAPI app
 app = FastAPI(
@@ -15,16 +21,15 @@ app = FastAPI(
 )
 
 # Configure CORS for frontend
+# Lê de variável de ambiente ou usa defaults de desenvolvimento
+cors_origins = os.getenv("CORS_ORIGINS", "http://localhost:5173,http://127.0.0.1:5173")
+allowed_origins = [origin.strip() for origin in cors_origins.split(",")]
+
+print(f"🌐 CORS configurado para: {allowed_origins}")
+
 app.add_middleware(
     CORSMiddleware,
-    allow_origins=[
-        "http://localhost:5173",
-        "http://127.0.0.1:5173",
-        "http://localhost:5174",
-        "http://127.0.0.1:5174",
-        "http://localhost:3000",
-        "http://127.0.0.1:3000"
-    ],
+    allow_origins=allowed_origins,
     allow_credentials=True,
     allow_methods=["*"],
     allow_headers=["*"],

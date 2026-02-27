@@ -1,96 +1,174 @@
-# MedGM Analytics - Backend
+# 🚀 MedGM Analytics - Backend
 
-Backend API em FastAPI para plataforma de analytics da MedGM.
+Backend FastAPI para o sistema de analytics da MedGM.
 
-## Estrutura
+## 📦 Stack
+
+- **Framework**: FastAPI 0.109.0
+- **Database**: PostgreSQL (Supabase) ou SQLite (desenvolvimento)
+- **ORM**: SQLAlchemy 2.0.25
+- **Server**: Uvicorn
+- **Deploy**: Railway
+
+---
+
+## ⚡ Quick Start (Desenvolvimento)
+
+```bash
+# Instalar dependências
+pip install -r requirements.txt
+
+# Rodar servidor (usa SQLite local automaticamente)
+uvicorn app.main:app --reload
+```
+
+Acesse: http://localhost:8000/docs
+
+---
+
+## 🌐 Deploy Produção
+
+Consulte os guias completos na raiz do projeto:
+- [DEPLOY.md](../DEPLOY.md) - Guia detalhado
+- [DEPLOY_CHECKLIST.md](../DEPLOY_CHECKLIST.md) - Checklist passo a passo
+- [COMANDOS_RAPIDOS.md](../COMANDOS_RAPIDOS.md) - Comandos úteis
+
+### Resumo Deploy
+
+**1. Criar Schema no Supabase:**
+```bash
+# Executar scripts/create_supabase_schema.sql no SQL Editor do Supabase
+```
+
+**2. Migrar Dados:**
+```bash
+echo "DATABASE_URL=postgresql://..." > .env
+python scripts/migrate_to_supabase.py
+```
+
+**3. Deploy no Railway:**
+```
+- New Project → GitHub repo
+- Root Directory: /backend
+- Variables: DATABASE_URL, CORS_ORIGINS
+```
+
+---
+
+## 📁 Estrutura
 
 ```
 backend/
 ├── app/
+│   ├── main.py              # FastAPI app
+│   ├── database.py          # Config banco (SQLite/PostgreSQL)
 │   ├── models/
-│   │   ├── __init__.py
-│   │   └── models.py          # SQLAlchemy models (Venda, Financeiro, KPI)
-│   ├── parsers/
-│   │   ├── __init__.py
-│   │   ├── comercial.py       # Parser para planilhas comerciais
-│   │   └── financeiro.py      # Parser para planilhas financeiras
-│   ├── routers/
-│   │   ├── __init__.py
-│   │   ├── upload.py          # Endpoints de upload
-│   │   └── metrics.py         # Endpoints de métricas
-│   ├── database.py            # Configuração SQLAlchemy
-│   ├── main.py                # FastAPI app
-│   └── __init__.py
-├── data/                      # SQLite database
-├── uploads/                   # Arquivos temporários
+│   │   └── models.py        # SQLAlchemy models
+│   └── routers/
+│       ├── comercial.py     # Dashboard comercial
+│       ├── vendas.py        # CRUD vendas
+│       ├── metas.py         # Gestão de metas
+│       └── ...
+├── data/
+│   └── medgm_analytics.db   # SQLite local
+├── scripts/
+│   ├── create_supabase_schema.sql    # Schema PostgreSQL
+│   ├── migrate_to_supabase.py        # Migração de dados
+│   └── validate_setup.py             # Validação pré-deploy
 ├── requirements.txt
-├── seed.py                    # Script de inicialização do DB
-└── run.sh                     # Script para rodar servidor
+├── Procfile                 # Railway config
+└── railway.json             # Railway config
 ```
 
-## Setup
+---
 
-1. Criar virtual environment:
+## 🔑 Variáveis de Ambiente
+
+**Desenvolvimento (.env):**
 ```bash
-python -m venv venv
-source venv/bin/activate  # Linux/Mac
+# Deixe vazio para usar SQLite local
+DATABASE_URL=
+CORS_ORIGINS=http://localhost:5173
 ```
 
-2. Instalar dependências:
+**Produção (Railway):**
 ```bash
-pip install -r requirements.txt
+DATABASE_URL=postgresql://postgres:senha@db.projeto.supabase.co:5432/postgres
+CORS_ORIGINS=https://seu-app.vercel.app,http://localhost:5173
+PORT=8000
 ```
 
-3. Inicializar banco de dados:
-```bash
-python seed.py
-```
+---
 
-4. Rodar servidor:
-```bash
-./run.sh
-# ou
-uvicorn app.main:app --reload --port 8000
-```
+## 📊 Endpoints Principais
 
-## Endpoints
+### Comercial
+- `GET /api/comercial/dashboard-geral` - Dashboard consolidado
+- `GET /api/comercial/dashboard-ss` - Social Selling
+- `GET /api/comercial/dashboard-sdr` - SDR
+- `GET /api/comercial/dashboard-closer` - Closer
 
-### Health Check
-- `GET /health` - Status da API
+### CRUD
+- `GET/POST/PUT/DELETE /api/vendas` - Vendas
+- `GET/POST/PUT/DELETE /api/social-selling` - Métricas SS
+- `GET/POST/PUT/DELETE /api/sdr` - Métricas SDR
+- `GET/POST/PUT/DELETE /api/closer` - Métricas Closer
 
 ### Upload
-- `POST /upload/comercial` - Upload planilha comercial (Excel)
-- `POST /upload/financeiro` - Upload planilha financeira (Excel)
+- `POST /api/upload/comercial` - Upload Excel
 
-### Metrics
-- `GET /metrics/financeiro?mes=1&ano=2026` - Métricas financeiras
-- `GET /metrics/comercial?mes=1&ano=2026` - Métricas comerciais
-- `GET /metrics/inteligencia?mes=1&ano=2026` - CAC, LTV, projeções
+Documentação completa: http://localhost:8000/docs
 
-## Estrutura dos Dados
+---
 
-### Tabela: vendas
-- id, data, cliente, valor, funil, vendedor, mes, ano
+## 🛠️ Scripts Úteis
 
-### Tabela: financeiro
-- id, tipo, categoria, valor, data, mes, ano, previsto_realizado, descricao
+```bash
+# Validar setup antes do deploy
+python scripts/validate_setup.py
 
-### Tabela: kpis
-- id, mes, ano, faturamento, vendas_total, calls, leads, cac, ltv, runway
+# Migrar dados para Supabase
+python scripts/migrate_to_supabase.py
 
-## Parsers
+# Resetar banco local
+rm data/medgm_analytics.db
+python -c "from app.database import init_db; init_db()"
+```
 
-### ComercialParser
-Processa planilhas comerciais com estrutura:
-- Aba VENDAS: Data, Cliente, Valor, Funil, Vendedor
+---
 
-### FinanceiroParser
-Processa planilhas financeiras com estrutura:
-- Abas mensais (JAN 2026, FEV 2026, etc)
-- Colunas: Tipo, Categoria, Valor, Data, Previsto/Realizado
+## 🚨 Troubleshooting
 
-## Desenvolvimento
+### CORS Error
+```bash
+# Verificar CORS_ORIGINS no Railway
+# Deve incluir URL exata do Vercel com https://
+```
 
-API documentada automaticamente em:
-- Swagger UI: http://localhost:8000/docs
-- ReDoc: http://localhost:8000/redoc
+### Database Connection
+```bash
+# Testar conexão
+python scripts/validate_setup.py
+```
+
+### Railway Deploy Failed
+```bash
+# Verificar:
+- Root Directory: /backend
+- Arquivo Procfile existe
+- requirements.txt existe
+- Logs do Railway para erro específico
+```
+
+---
+
+## 📚 Documentação
+
+- **API Docs**: http://localhost:8000/docs
+- **Railway**: https://docs.railway.app
+- **Supabase**: https://supabase.com/docs
+- **FastAPI**: https://fastapi.tiangolo.com
+
+---
+
+**Desenvolvido com ❤️ para MedGM**

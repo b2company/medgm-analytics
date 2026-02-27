@@ -25,6 +25,7 @@ const Metas = ({ mes: mesProp, ano: anoProp }) => {
     pessoa_id: '',
     meta_ativacoes: '',
     meta_leads: '',
+    meta_reunioes_agendadas: '',
     meta_reunioes: '',
     meta_vendas: '',
     meta_faturamento: ''
@@ -106,6 +107,7 @@ const Metas = ({ mes: mesProp, ano: anoProp }) => {
         pessoa_id: parseInt(formData.pessoa_id),
         meta_ativacoes: formData.meta_ativacoes ? parseInt(formData.meta_ativacoes) : null,
         meta_leads: formData.meta_leads ? parseInt(formData.meta_leads) : null,
+        meta_reunioes_agendadas: formData.meta_reunioes_agendadas ? parseInt(formData.meta_reunioes_agendadas) : null,
         meta_reunioes: formData.meta_reunioes ? parseInt(formData.meta_reunioes) : null,
         meta_vendas: formData.meta_vendas ? parseInt(formData.meta_vendas) : null,
         meta_faturamento: formData.meta_faturamento ? parseFloat(formData.meta_faturamento) : null
@@ -123,6 +125,7 @@ const Metas = ({ mes: mesProp, ano: anoProp }) => {
         pessoa_id: '',
         meta_ativacoes: '',
         meta_leads: '',
+        meta_reunioes_agendadas: '',
         meta_reunioes: '',
         meta_vendas: '',
         meta_faturamento: ''
@@ -141,6 +144,7 @@ const Metas = ({ mes: mesProp, ano: anoProp }) => {
       pessoa_id: meta.pessoa_id?.toString() || '',
       meta_ativacoes: meta.meta_ativacoes?.toString() || '',
       meta_leads: meta.meta_leads?.toString() || '',
+      meta_reunioes_agendadas: meta.meta_reunioes_agendadas?.toString() || '',
       meta_reunioes: meta.meta_reunioes?.toString() || '',
       meta_vendas: meta.meta_vendas?.toString() || '',
       meta_faturamento: meta.meta_faturamento?.toString() || ''
@@ -185,29 +189,31 @@ const Metas = ({ mes: mesProp, ano: anoProp }) => {
   };
 
   const getMetricasPorFuncao = (meta) => {
-    const funcao = meta.pessoa?.funcao;
+    const funcao = (meta.pessoa?.funcao || '').toLowerCase().replace(/\s+/g, '_');
 
-    if (funcao === 'social_selling') {
+    if (funcao.includes('social')) {
       return {
-        meta: meta.meta_ativacoes || meta.meta_leads,
-        realizado: meta.realizado_ativacoes || meta.realizado_leads,
-        delta: meta.delta_ativacoes || meta.delta_leads,
-        label: 'Ativacoes/Leads'
+        meta: meta.meta_leads || meta.meta_ativacoes,
+        realizado: meta.realizado_leads || meta.realizado_ativacoes,
+        delta: meta.delta_leads || meta.delta_ativacoes,
+        label: meta.meta_leads ? 'Leads' : 'Ativacoes/Leads'
       };
-    } else if (funcao === 'sdr') {
+    } else if (funcao.includes('sdr')) {
+      // Priorizar reuniões realizadas, mas mostrar agendadas se for a única disponível
+      const usarRealizadas = meta.meta_reunioes !== null;
       return {
-        meta: meta.meta_reunioes,
-        realizado: meta.realizado_reunioes,
-        delta: meta.delta_reunioes,
-        label: 'Reunioes'
+        meta: usarRealizadas ? meta.meta_reunioes : meta.meta_reunioes_agendadas,
+        realizado: usarRealizadas ? meta.realizado_reunioes : meta.realizado_reunioes_agendadas,
+        delta: usarRealizadas ? meta.delta_reunioes : meta.delta_reunioes_agendadas,
+        label: usarRealizadas ? 'Reuniões Realizadas' : 'Reuniões Agendadas'
       };
-    } else if (funcao === 'closer') {
+    } else if (funcao.includes('closer')) {
       return {
-        meta: meta.meta_faturamento,
-        realizado: meta.realizado_faturamento,
-        delta: meta.delta_faturamento,
-        label: 'Faturamento',
-        isCurrency: true
+        meta: meta.meta_faturamento || meta.meta_vendas,
+        realizado: meta.realizado_faturamento || meta.realizado_vendas,
+        delta: meta.delta_faturamento || meta.delta_vendas,
+        label: meta.meta_faturamento ? 'Faturamento' : 'Vendas',
+        isCurrency: !!meta.meta_faturamento
       };
     }
     return { meta: 0, realizado: 0, delta: 0, label: '' };
@@ -240,6 +246,7 @@ const Metas = ({ mes: mesProp, ano: anoProp }) => {
                 pessoa_id: '',
                 meta_ativacoes: '',
                 meta_leads: '',
+                meta_reunioes_agendadas: '',
                 meta_reunioes: '',
                 meta_vendas: '',
                 meta_faturamento: ''
@@ -403,7 +410,20 @@ const Metas = ({ mes: mesProp, ano: anoProp }) => {
           <div className="grid grid-cols-2 gap-4">
             <div>
               <label className="block text-sm font-medium text-gray-700 mb-1">
-                Meta Reunioes
+                Meta Reuniões Agendadas (SDR)
+              </label>
+              <input
+                type="number"
+                value={formData.meta_reunioes_agendadas}
+                onChange={(e) => setFormData({ ...formData, meta_reunioes_agendadas: e.target.value })}
+                className="w-full border border-gray-300 rounded-lg px-3 py-2 focus:ring-2 focus:ring-primary"
+                placeholder="0"
+                min="0"
+              />
+            </div>
+            <div>
+              <label className="block text-sm font-medium text-gray-700 mb-1">
+                Meta Reuniões Realizadas (SDR)
               </label>
               <input
                 type="number"
@@ -414,6 +434,9 @@ const Metas = ({ mes: mesProp, ano: anoProp }) => {
                 min="0"
               />
             </div>
+          </div>
+
+          <div className="grid grid-cols-2 gap-4">
             <div>
               <label className="block text-sm font-medium text-gray-700 mb-1">
                 Meta Vendas
@@ -422,6 +445,20 @@ const Metas = ({ mes: mesProp, ano: anoProp }) => {
                 type="number"
                 value={formData.meta_vendas}
                 onChange={(e) => setFormData({ ...formData, meta_vendas: e.target.value })}
+                className="w-full border border-gray-300 rounded-lg px-3 py-2 focus:ring-2 focus:ring-primary"
+                placeholder="0"
+                min="0"
+              />
+            </div>
+            <div>
+              <label className="block text-sm font-medium text-gray-700 mb-1">
+                Meta Faturamento (R$)
+              </label>
+              <input
+                type="number"
+                step="0.01"
+                value={formData.meta_faturamento}
+                onChange={(e) => setFormData({ ...formData, meta_faturamento: e.target.value })}
                 className="w-full border border-gray-300 rounded-lg px-3 py-2 focus:ring-2 focus:ring-primary"
                 placeholder="0"
                 min="0"

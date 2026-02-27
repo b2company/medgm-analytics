@@ -27,6 +27,7 @@ class MetaCreate(BaseModel):
     pessoa_id: Optional[int] = None
     meta_ativacoes: Optional[int] = None
     meta_leads: Optional[int] = None
+    meta_reunioes_agendadas: Optional[int] = None
     meta_reunioes: Optional[int] = None
     meta_vendas: Optional[int] = None
     meta_faturamento: Optional[float] = None
@@ -35,6 +36,7 @@ class MetaCreate(BaseModel):
 class MetaUpdate(BaseModel):
     meta_ativacoes: Optional[int] = None
     meta_leads: Optional[int] = None
+    meta_reunioes_agendadas: Optional[int] = None
     meta_reunioes: Optional[int] = None
     meta_vendas: Optional[int] = None
     meta_faturamento: Optional[float] = None
@@ -79,6 +81,7 @@ async def get_meta_pessoa_mes(
             return {
                 "meta_ativacoes": 0,
                 "meta_leads": 0,
+                "meta_reunioes_agendadas": 0,
                 "meta_reunioes": 0,
                 "meta_vendas": 0,
                 "meta_faturamento": 0
@@ -87,6 +90,7 @@ async def get_meta_pessoa_mes(
         return {
             "meta_ativacoes": meta.meta_ativacoes or 0,
             "meta_leads": meta.meta_leads or 0,
+            "meta_reunioes_agendadas": meta.meta_reunioes_agendadas or 0,
             "meta_reunioes": meta.meta_reunioes or 0,
             "meta_vendas": meta.meta_vendas or 0,
             "meta_faturamento": meta.meta_faturamento or 0
@@ -136,16 +140,19 @@ async def listar_metas(
                 } if pessoa else None,
                 "meta_ativacoes": m.meta_ativacoes,
                 "meta_leads": m.meta_leads,
+                "meta_reunioes_agendadas": m.meta_reunioes_agendadas,
                 "meta_reunioes": m.meta_reunioes,
                 "meta_vendas": m.meta_vendas,
                 "meta_faturamento": m.meta_faturamento,
                 "realizado_ativacoes": m.realizado_ativacoes,
                 "realizado_leads": m.realizado_leads,
+                "realizado_reunioes_agendadas": m.realizado_reunioes_agendadas,
                 "realizado_reunioes": m.realizado_reunioes,
                 "realizado_vendas": m.realizado_vendas,
                 "realizado_faturamento": m.realizado_faturamento,
                 "delta_ativacoes": m.delta_ativacoes,
                 "delta_leads": m.delta_leads,
+                "delta_reunioes_agendadas": m.delta_reunioes_agendadas,
                 "delta_reunioes": m.delta_reunioes,
                 "delta_vendas": m.delta_vendas,
                 "delta_faturamento": m.delta_faturamento,
@@ -193,6 +200,119 @@ async def criar_meta(item: MetaCreate, db: Session = Depends(get_db)):
     except Exception as e:
         db.rollback()
         raise HTTPException(status_code=500, detail=f"Erro ao criar meta: {str(e)}")
+
+
+@router.put("/calcular-realizado")
+async def calcular_realizado(
+    mes: int,
+    ano: int,
+    db: Session = Depends(get_db)
+):
+    """
+    Calcula automaticamente o realizado vs meta para um mes/ano.
+    Atualiza as metas com os valores realizados e deltas.
+    """
+    try:
+        metas = db.query(Meta).filter(
+            Meta.mes == mes,
+            Meta.ano == ano,
+            Meta.tipo == "individual"
+        ).all()
+
+        if not metas:
+            raise HTTPException(
+                status_code=404,
+                detail=f"Nenhuma meta encontrada para {mes}/{ano}"
+            )
+
+        atualizadas = 0
+
+        for meta in metas:
+            if not meta.pessoa_id:
+                continue
+
+            pessoa = db.query(Pessoa).filter(Pessoa.id == meta.pessoa_id).first()
+            if not pessoa:
+                continue
+
+            funcao_lower = pessoa.funcao.lower() if pessoa.funcao else ""
+
+            if funcao_lower == "social selling" or funcao_lower == "social_selling":
+                # Buscar metricas de SS
+                ss = db.query(SocialSellingMetrica).filter(
+                    SocialSellingMetrica.mes == mes,
+                    SocialSellingMetrica.ano == ano,
+                    SocialSellingMetrica.vendedor == pessoa.nome
+                ).all()
+
+                meta.realizado_ativacoes = sum(s.ativacoes or 0 for s in ss)
+                meta.realizado_leads = sum(s.leads_gerados or 0 for s in ss)
+                meta.delta_ativacoes = meta.realizado_ativacoes - (meta.meta_ativacoes or 0)
+                meta.delta_leads = meta.realizado_leads - (meta.meta_leads or 0)
+
+                # Calcular % atingimento (baseado em leads para SS)
+                if meta.meta_leads and meta.meta_leads > 0:
+                    meta.perc_atingimento = (meta.realizado_leads / meta.meta_leads) * 100
+                elif meta.meta_ativacoes and meta.meta_ativacoes > 0:
+                    meta.perc_atingimento = (meta.realizado_ativacoes / meta.meta_ativacoes) * 100
+
+            elif funcao_lower == "sdr":
+                # Buscar metricas de SDR
+                sdr = db.query(SDRMetrica).filter(
+                    SDRMetrica.mes == mes,
+                    SDRMetrica.ano == ano,
+                    SDRMetrica.sdr == pessoa.nome
+                ).all()
+
+                # Calcular realizados
+                meta.realizado_reunioes_agendadas = sum(s.reunioes_agendadas or 0 for s in sdr)
+                meta.realizado_reunioes = sum(s.reunioes_realizadas or 0 for s in sdr)
+
+                # Calcular deltas
+                meta.delta_reunioes_agendadas = meta.realizado_reunioes_agendadas - (meta.meta_reunioes_agendadas or 0)
+                meta.delta_reunioes = meta.realizado_reunioes - (meta.meta_reunioes or 0)
+
+                # Calcular % atingimento (priorizar realizadas, mas usar agendadas se não tiver meta de realizadas)
+                if meta.meta_reunioes and meta.meta_reunioes > 0:
+                    meta.perc_atingimento = (meta.realizado_reunioes / meta.meta_reunioes) * 100
+                elif meta.meta_reunioes_agendadas and meta.meta_reunioes_agendadas > 0:
+                    meta.perc_atingimento = (meta.realizado_reunioes_agendadas / meta.meta_reunioes_agendadas) * 100
+
+            elif funcao_lower == "closer":
+                # Buscar vendas (não closer_metricas, pois tem dados mais completos)
+                from app.models.models import Venda
+
+                vendas = db.query(Venda).filter(
+                    Venda.mes == mes,
+                    Venda.ano == ano,
+                    Venda.closer == pessoa.nome
+                ).all()
+
+                meta.realizado_vendas = len(vendas)
+                meta.realizado_faturamento = sum(v.valor_bruto or 0 for v in vendas)
+                meta.delta_vendas = meta.realizado_vendas - (meta.meta_vendas or 0)
+                meta.delta_faturamento = meta.realizado_faturamento - (meta.meta_faturamento or 0)
+
+                # Calcular % atingimento (baseado em faturamento para closer)
+                if meta.meta_faturamento and meta.meta_faturamento > 0:
+                    meta.perc_atingimento = (meta.realizado_faturamento / meta.meta_faturamento) * 100
+                elif meta.meta_vendas and meta.meta_vendas > 0:
+                    meta.perc_atingimento = (meta.realizado_vendas / meta.meta_vendas) * 100
+
+            atualizadas += 1
+
+        db.commit()
+
+        return {
+            "message": f"Realizado calculado para {mes}/{ano}",
+            "metas_atualizadas": atualizadas
+        }
+
+    except HTTPException:
+        raise
+    except Exception as e:
+        db.rollback()
+        raise HTTPException(status_code=500, detail=f"Erro ao calcular realizado: {str(e)}")
 
 
 @router.put("/{id}")
@@ -358,111 +478,6 @@ async def replicar_metas_mes(
         db.rollback()
         raise HTTPException(status_code=500, detail=f"Erro ao replicar metas: {str(e)}")
 
-
-# ==================== CALCULAR REALIZADO ====================
-
-@router.put("/calcular-realizado")
-async def calcular_realizado(
-    mes: int,
-    ano: int,
-    db: Session = Depends(get_db)
-):
-    """
-    Calcula automaticamente o realizado vs meta para um mes/ano.
-    Atualiza as metas com os valores realizados e deltas.
-    """
-    try:
-        metas = db.query(Meta).filter(
-            Meta.mes == mes,
-            Meta.ano == ano,
-            Meta.tipo == "pessoa"
-        ).all()
-
-        if not metas:
-            raise HTTPException(
-                status_code=404,
-                detail=f"Nenhuma meta encontrada para {mes}/{ano}"
-            )
-
-        atualizadas = 0
-
-        for meta in metas:
-            if not meta.pessoa_id:
-                continue
-
-            pessoa = db.query(Pessoa).filter(Pessoa.id == meta.pessoa_id).first()
-            if not pessoa:
-                continue
-
-            if pessoa.funcao == "social_selling":
-                # Buscar metricas de SS
-                ss = db.query(SocialSellingMetrica).filter(
-                    SocialSellingMetrica.mes == mes,
-                    SocialSellingMetrica.ano == ano,
-                    SocialSellingMetrica.vendedor == pessoa.nome
-                ).all()
-
-                meta.realizado_ativacoes = sum(s.ativacoes or 0 for s in ss)
-                meta.realizado_leads = sum(s.leads_gerados or 0 for s in ss)
-                meta.delta_ativacoes = meta.realizado_ativacoes - (meta.meta_ativacoes or 0)
-                meta.delta_leads = meta.realizado_leads - (meta.meta_leads or 0)
-
-                # Calcular % atingimento (baseado em leads para SS)
-                if meta.meta_leads and meta.meta_leads > 0:
-                    meta.perc_atingimento = (meta.realizado_leads / meta.meta_leads) * 100
-                elif meta.meta_ativacoes and meta.meta_ativacoes > 0:
-                    meta.perc_atingimento = (meta.realizado_ativacoes / meta.meta_ativacoes) * 100
-
-            elif pessoa.funcao == "sdr":
-                # Buscar metricas de SDR
-                sdr = db.query(SDRMetrica).filter(
-                    SDRMetrica.mes == mes,
-                    SDRMetrica.ano == ano,
-                    SDRMetrica.sdr == pessoa.nome
-                ).all()
-
-                meta.realizado_reunioes = sum(s.reunioes_agendadas or 0 for s in sdr)
-                meta.delta_reunioes = meta.realizado_reunioes - (meta.meta_reunioes or 0)
-
-                # Calcular % atingimento
-                if meta.meta_reunioes and meta.meta_reunioes > 0:
-                    meta.perc_atingimento = (meta.realizado_reunioes / meta.meta_reunioes) * 100
-
-            elif pessoa.funcao == "closer":
-                # Buscar metricas de Closer
-                closer = db.query(CloserMetrica).filter(
-                    CloserMetrica.mes == mes,
-                    CloserMetrica.ano == ano,
-                    CloserMetrica.closer == pessoa.nome
-                ).all()
-
-                meta.realizado_vendas = sum(c.vendas or 0 for c in closer)
-                meta.realizado_faturamento = sum(c.faturamento or 0 for c in closer)
-                meta.delta_vendas = meta.realizado_vendas - (meta.meta_vendas or 0)
-                meta.delta_faturamento = meta.realizado_faturamento - (meta.meta_faturamento or 0)
-
-                # Calcular % atingimento (baseado em faturamento para closer)
-                if meta.meta_faturamento and meta.meta_faturamento > 0:
-                    meta.perc_atingimento = (meta.realizado_faturamento / meta.meta_faturamento) * 100
-                elif meta.meta_vendas and meta.meta_vendas > 0:
-                    meta.perc_atingimento = (meta.realizado_vendas / meta.meta_vendas) * 100
-
-            atualizadas += 1
-
-        db.commit()
-
-        return {
-            "message": f"Realizado calculado para {mes}/{ano}",
-            "metas_atualizadas": atualizadas
-        }
-
-    except HTTPException:
-        raise
-    except Exception as e:
-        db.rollback()
-        raise HTTPException(status_code=500, detail=f"Erro ao calcular realizado: {str(e)}")
-
-
 # ==================== HISTORICO ====================
 
 @router.get("/historico/{pessoa_id}")
@@ -488,16 +503,19 @@ async def historico_pessoa(
                 "mes_nome": _get_mes_nome(m.mes),
                 "meta_ativacoes": m.meta_ativacoes,
                 "meta_leads": m.meta_leads,
+                "meta_reunioes_agendadas": m.meta_reunioes_agendadas,
                 "meta_reunioes": m.meta_reunioes,
                 "meta_vendas": m.meta_vendas,
                 "meta_faturamento": m.meta_faturamento,
                 "realizado_ativacoes": m.realizado_ativacoes,
                 "realizado_leads": m.realizado_leads,
+                "realizado_reunioes_agendadas": m.realizado_reunioes_agendadas,
                 "realizado_reunioes": m.realizado_reunioes,
                 "realizado_vendas": m.realizado_vendas,
                 "realizado_faturamento": m.realizado_faturamento,
                 "delta_ativacoes": m.delta_ativacoes,
                 "delta_leads": m.delta_leads,
+                "delta_reunioes_agendadas": m.delta_reunioes_agendadas,
                 "delta_reunioes": m.delta_reunioes,
                 "delta_vendas": m.delta_vendas,
                 "delta_faturamento": m.delta_faturamento,

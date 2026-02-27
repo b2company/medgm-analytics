@@ -2,6 +2,10 @@ import React, { useState, useEffect } from 'react';
 import { getVendas, createVenda, updateVenda, deleteVenda } from '../services/api';
 import Modal from '../components/Modal';
 import VendaForm from '../components/VendaForm';
+import EditableDataTable from '../components/EditableDataTable';
+import UploadComercialModal from '../components/UploadComercialModal';
+import FilterPanel from '../components/FilterPanel';
+import { FilterSelect, FilterDateRange } from '../components/FilterInput';
 
 const Vendas = ({ mes: mesProp, ano: anoProp }) => {
   const mes = mesProp || new Date().getMonth() + 1;
@@ -10,8 +14,10 @@ const Vendas = ({ mes: mesProp, ano: anoProp }) => {
   const [vendas, setVendas] = useState([]);
   const [loading, setLoading] = useState(false);
   const [showModal, setShowModal] = useState(false);
+  const [showUploadModal, setShowUploadModal] = useState(false);
   const [editingVenda, setEditingVenda] = useState(null);
-  const [filtros, setFiltros] = useState({ closer: '', funil: '' });
+  const [filtros, setFiltros] = useState({ dataInicio: '', dataFim: '', closer: '', funil: '' });
+  const [selectedVendas, setSelectedVendas] = useState([]);
 
   const meses = ['Janeiro', 'Fevereiro', 'Março', 'Abril', 'Maio', 'Junho',
     'Julho', 'Agosto', 'Setembro', 'Outubro', 'Novembro', 'Dezembro'];
@@ -24,9 +30,11 @@ const Vendas = ({ mes: mesProp, ano: anoProp }) => {
     setLoading(true);
     try {
       const data = await getVendas(mes, ano);
-      setVendas(data);
+      console.log(`📊 Vendas ${meses[mes - 1]}/${ano}:`, data);
+      setVendas(Array.isArray(data) ? data : []);
     } catch (error) {
       console.error('Erro ao buscar vendas:', error);
+      setVendas([]);
     } finally {
       setLoading(false);
     }
@@ -48,10 +56,10 @@ const Vendas = ({ mes: mesProp, ano: anoProp }) => {
     }
   };
 
-  const handleDelete = async (id) => {
+  const handleDelete = async (row) => {
     if (!window.confirm('Deseja realmente deletar esta venda?')) return;
     try {
-      await deleteVenda(id);
+      await deleteVenda(row.id);
       fetchVendas();
     } catch (error) {
       console.error('Erro ao deletar:', error);
@@ -59,59 +67,183 @@ const Vendas = ({ mes: mesProp, ano: anoProp }) => {
     }
   };
 
+  const handleDeleteSelected = async () => {
+    if (selectedVendas.length === 0) return;
+
+    const confirm = window.confirm(
+      `Deseja realmente deletar ${selectedVendas.length} venda(s) selecionada(s)?\n\nEsta ação não pode ser desfeita.`
+    );
+
+    if (!confirm) return;
+
+    setLoading(true);
+    try {
+      // Deletar todas as vendas selecionadas em paralelo
+      await Promise.all(selectedVendas.map(id => deleteVenda(id)));
+      setSelectedVendas([]);
+      fetchVendas();
+      alert(`${selectedVendas.length} venda(s) deletada(s) com sucesso!`);
+    } catch (error) {
+      console.error('Erro ao deletar vendas:', error);
+      alert('Erro ao deletar algumas vendas. Tente novamente.');
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  const toggleSelectVenda = (id) => {
+    setSelectedVendas(prev =>
+      prev.includes(id)
+        ? prev.filter(vendaId => vendaId !== id)
+        : [...prev, id]
+    );
+  };
+
+  const toggleSelectAll = () => {
+    if (selectedVendas.length === vendasFiltradas.length) {
+      setSelectedVendas([]);
+    } else {
+      setSelectedVendas(vendasFiltradas.map(v => v.id));
+    }
+  };
+
+  const handleInlineUpdate = async (id, updatedRow) => {
+    try {
+      await updateVenda(id, updatedRow);
+      await fetchVendas();
+    } catch (error) {
+      console.error('Erro ao atualizar inline:', error);
+      alert('Erro ao atualizar. Tente novamente.');
+      throw error;
+    }
+  };
+
   const formatCurrency = (value) => {
     return new Intl.NumberFormat('pt-BR', { style: 'currency', currency: 'BRL' }).format(value || 0);
   };
 
-  const closersUnicos = [...new Set(vendas.map(v => v.closer).filter(Boolean))];
-  const funisUnicos = [...new Set(vendas.map(v => v.funil).filter(Boolean))];
-
   const vendasFiltradas = vendas.filter(v => {
+    // Filtro de data
+    if (filtros.dataInicio || filtros.dataFim) {
+      const vendaData = v.data_venda ? new Date(v.data_venda) : null;
+      if (vendaData) {
+        if (filtros.dataInicio) {
+          const [dia, mes, ano] = filtros.dataInicio.split('/');
+          const dataInicio = new Date(ano, mes - 1, dia);
+          if (vendaData < dataInicio) return false;
+        }
+        if (filtros.dataFim) {
+          const [dia, mes, ano] = filtros.dataFim.split('/');
+          const dataFim = new Date(ano, mes - 1, dia);
+          dataFim.setHours(23, 59, 59);
+          if (vendaData > dataFim) return false;
+        }
+      }
+    }
+
     if (filtros.closer && v.closer !== filtros.closer) return false;
     if (filtros.funil && v.funil !== filtros.funil) return false;
     return true;
   });
 
+  // Listas únicas para filtros
+  const closersUnicos = [...new Set(vendas.map(v => v.closer).filter(Boolean))].sort();
+  const funisUnicos = [...new Set(vendas.map(v => v.funil).filter(Boolean))].sort();
+
   const totais = vendasFiltradas.reduce((acc, v) => ({
-    booking: acc.booking + (v.booking || 0),
     previsto: acc.previsto + (v.previsto || 0),
-    valor_pago: acc.valor_pago + (v.valor_pago || 0),
+    valor_bruto: acc.valor_bruto + (v.valor_bruto || 0),
     valor_liquido: acc.valor_liquido + (v.valor_liquido || 0)
-  }), { booking: 0, previsto: 0, valor_pago: 0, valor_liquido: 0 });
+  }), { previsto: 0, valor_bruto: 0, valor_liquido: 0 });
 
   return (
     <div className="max-w-7xl mx-auto py-8 px-4">
       <div className="flex justify-between items-center mb-8">
-        <h1 className="text-3xl font-bold text-gray-900">
-          Gestão de Vendas - {meses[mes - 1]} {ano}
-        </h1>
-        <button
-          onClick={() => { setEditingVenda(null); setShowModal(true); }}
-          className="bg-primary text-white px-4 py-2 rounded-lg hover:bg-primary-dark"
-        >
-          + Nova Venda
-        </button>
+        <div>
+          <h1 className="text-3xl font-bold text-gray-900">
+            Gestão de Vendas - {meses[mes - 1]} {ano}
+          </h1>
+          {selectedVendas.length > 0 && (
+            <p className="text-sm text-gray-600 mt-1">
+              {selectedVendas.length} venda(s) selecionada(s)
+            </p>
+          )}
+        </div>
+        <div className="flex gap-3">
+          {selectedVendas.length > 0 && (
+            <button
+              onClick={handleDeleteSelected}
+              disabled={loading}
+              className="bg-red-600 text-white px-4 py-2 rounded-lg hover:bg-red-700 transition-colors disabled:opacity-50 flex items-center gap-2"
+            >
+              <svg className="w-5 h-5" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16" />
+              </svg>
+              Deletar Selecionadas ({selectedVendas.length})
+            </button>
+          )}
+          <button
+            onClick={() => { setEditingVenda(null); setShowModal(true); }}
+            className="bg-primary text-white px-4 py-2 rounded-lg hover:bg-primary-dark"
+          >
+            + Nova Venda
+          </button>
+          <button
+            onClick={() => setShowUploadModal(true)}
+            className="bg-blue-600 text-white px-4 py-2 rounded-lg hover:bg-blue-700 transition-colors"
+          >
+            📤 Upload em Massa
+          </button>
+        </div>
       </div>
 
       {/* Cards de Totais */}
-      <div className="grid grid-cols-1 md:grid-cols-4 gap-4 mb-6">
-        <div className="bg-blue-50 rounded-lg p-4">
-          <p className="text-sm text-blue-600 font-medium">Total Booking</p>
-          <p className="text-2xl font-bold text-blue-900">{formatCurrency(totais.booking)}</p>
-        </div>
+      <div className="grid grid-cols-1 md:grid-cols-3 gap-4 mb-6">
         <div className="bg-green-50 rounded-lg p-4">
           <p className="text-sm text-green-600 font-medium">Total Previsto</p>
           <p className="text-2xl font-bold text-green-900">{formatCurrency(totais.previsto)}</p>
         </div>
-        <div className="bg-purple-50 rounded-lg p-4">
-          <p className="text-sm text-purple-600 font-medium">Total Pago</p>
-          <p className="text-2xl font-bold text-purple-900">{formatCurrency(totais.valor_pago)}</p>
+        <div className="bg-blue-50 rounded-lg p-4">
+          <p className="text-sm text-blue-600 font-medium">Faturamento Bruto</p>
+          <p className="text-2xl font-bold text-blue-900">{formatCurrency(totais.valor_bruto)}</p>
         </div>
         <div className="bg-orange-50 rounded-lg p-4">
-          <p className="text-sm text-orange-600 font-medium">Total Líquido</p>
+          <p className="text-sm text-orange-600 font-medium">Faturamento Líquido</p>
           <p className="text-2xl font-bold text-orange-900">{formatCurrency(totais.valor_liquido)}</p>
         </div>
       </div>
+
+      {/* Filtros para Tabela */}
+      <FilterPanel
+        filters={filtros}
+        onFilterChange={(key, value) => setFiltros({ ...filtros, [key]: value })}
+        onClearFilters={() => setFiltros({ dataInicio: '', dataFim: '', closer: '', funil: '' })}
+        totalRecords={vendas.length}
+        filteredRecords={vendasFiltradas.length}
+      >
+        <FilterDateRange
+          labelInicio="Data Início"
+          labelFim="Data Fim"
+          valueInicio={filtros.dataInicio}
+          valueFim={filtros.dataFim}
+          onChangeInicio={(value) => setFiltros({ ...filtros, dataInicio: value })}
+          onChangeFim={(value) => setFiltros({ ...filtros, dataFim: value })}
+        />
+        <FilterSelect
+          label="Closer"
+          value={filtros.closer}
+          onChange={(value) => setFiltros({ ...filtros, closer: value })}
+          options={closersUnicos}
+          placeholder="Todos os Closers"
+        />
+        <FilterSelect
+          label="Funil"
+          value={filtros.funil}
+          onChange={(value) => setFiltros({ ...filtros, funil: value })}
+          options={funisUnicos}
+          placeholder="Todos os Funis"
+        />
+      </FilterPanel>
 
       {/* Tabela */}
       <div className="bg-white rounded-lg shadow overflow-hidden">
@@ -120,72 +252,31 @@ const Vendas = ({ mes: mesProp, ano: anoProp }) => {
         ) : vendas.length === 0 ? (
           <div className="p-8 text-center text-gray-500"><p>Nenhuma venda encontrada</p></div>
         ) : (
-          <div className="overflow-x-auto">
-            <table className="min-w-full divide-y divide-gray-200">
-              <thead className="bg-gray-50">
-                <tr>
-                  <th className="px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase">Data</th>
-                  <th className="px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase">Cliente</th>
-                  <th className="px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase">Closer</th>
-                  <th className="px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase">Funil</th>
-                  <th className="px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase">Tipo</th>
-                  <th className="px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase">Produto</th>
-                  <th className="px-4 py-3 text-right text-xs font-medium text-gray-500 uppercase">Booking</th>
-                  <th className="px-4 py-3 text-right text-xs font-medium text-gray-500 uppercase">Previsto</th>
-                  <th className="px-4 py-3 text-right text-xs font-medium text-gray-500 uppercase">Pago</th>
-                  <th className="px-4 py-3 text-right text-xs font-medium text-gray-500 uppercase">Líquido</th>
-                  <th className="px-4 py-3 text-center text-xs font-medium text-gray-500 uppercase">Ações</th>
-                </tr>
-                <tr className="bg-gray-100">
-                  <th className="px-2 py-2"></th>
-                  <th className="px-2 py-2"></th>
-                  <th className="px-2 py-2">
-                    <select value={filtros.closer} onChange={(e) => setFiltros({...filtros, closer: e.target.value})}
-                      className="w-full px-2 py-1 text-xs border rounded">
-                      <option value="">Todos</option>
-                      {closersUnicos.map(c => <option key={c} value={c}>{c}</option>)}
-                    </select>
-                  </th>
-                  <th className="px-2 py-2">
-                    <select value={filtros.funil} onChange={(e) => setFiltros({...filtros, funil: e.target.value})}
-                      className="w-full px-2 py-1 text-xs border rounded">
-                      <option value="">Todos</option>
-                      {funisUnicos.map(f => <option key={f} value={f}>{f}</option>)}
-                    </select>
-                  </th>
-                  <th className="px-2 py-2"></th>
-                  <th className="px-2 py-2"></th>
-                  <th className="px-2 py-2"></th>
-                  <th className="px-2 py-2"></th>
-                  <th className="px-2 py-2"></th>
-                  <th className="px-2 py-2"></th>
-                  <th className="px-2 py-2"></th>
-                </tr>
-              </thead>
-              <tbody className="bg-white divide-y divide-gray-200">
-                {vendasFiltradas.map((v) => (
-                  <tr key={v.id} className="hover:bg-gray-50">
-                    <td className="px-4 py-3 text-sm">{v.data ? new Date(v.data).toLocaleDateString('pt-BR') : '-'}</td>
-                    <td className="px-4 py-3 text-sm font-medium">{v.cliente || '-'}</td>
-                    <td className="px-4 py-3 text-sm">{v.closer || '-'}</td>
-                    <td className="px-4 py-3 text-sm">{v.funil || '-'}</td>
-                    <td className="px-4 py-3 text-sm">{v.tipo_receita || '-'}</td>
-                    <td className="px-4 py-3 text-sm">{v.produto || '-'}</td>
-                    <td className="px-4 py-3 text-sm text-right">{formatCurrency(v.booking)}</td>
-                    <td className="px-4 py-3 text-sm text-right">{formatCurrency(v.previsto)}</td>
-                    <td className="px-4 py-3 text-sm text-right">{formatCurrency(v.valor_pago)}</td>
-                    <td className="px-4 py-3 text-sm text-right font-semibold">{formatCurrency(v.valor_liquido)}</td>
-                    <td className="px-4 py-3 text-center">
-                      <button onClick={() => { setEditingVenda(v); setShowModal(true); }}
-                        className="text-blue-600 hover:text-blue-800 mr-3">Editar</button>
-                      <button onClick={() => handleDelete(v.id)}
-                        className="text-red-600 hover:text-red-800">Deletar</button>
-                    </td>
-                  </tr>
-                ))}
-              </tbody>
-            </table>
-          </div>
+          <EditableDataTable
+            columns={[
+              { key: 'data', label: 'Data', format: 'date', sortable: true },
+              { key: 'cliente', label: 'Cliente', sortable: true, bold: true },
+              { key: 'closer', label: 'Closer', sortable: true },
+              { key: 'funil', label: 'Funil', sortable: true },
+              { key: 'tipo_receita', label: 'Tipo', sortable: true },
+              { key: 'produto', label: 'Produto', sortable: true },
+              { key: 'previsto', label: 'Previsto', format: 'currency', align: 'right', sortable: true },
+              { key: 'valor_bruto', label: 'Valor Bruto', format: 'currency', align: 'right', sortable: true },
+              { key: 'booking', label: 'Booking', format: 'currency', align: 'right', sortable: true },
+              { key: 'valor_liquido', label: 'Líquido', format: 'currency', align: 'right', sortable: true, showTotal: true }
+            ]}
+            data={vendasFiltradas}
+            editableColumns={['cliente', 'closer', 'funil', 'tipo_receita', 'produto', 'previsto', 'valor_bruto', 'booking', 'valor_liquido']}
+            showTotal={true}
+            totalLabel="TOTAL VENDAS"
+            showActions={true}
+            onUpdate={handleInlineUpdate}
+            onDelete={handleDelete}
+            selectable={true}
+            selectedRows={selectedVendas}
+            onToggleSelect={toggleSelectVenda}
+            onToggleSelectAll={toggleSelectAll}
+          />
         )}
       </div>
 
@@ -197,6 +288,18 @@ const Vendas = ({ mes: mesProp, ano: anoProp }) => {
           initialData={editingVenda}
         />
       </Modal>
+
+      {/* Modal de Upload */}
+      <UploadComercialModal
+        isOpen={showUploadModal}
+        tipo="vendas"
+        onClose={(sucesso) => {
+          setShowUploadModal(false);
+          if (sucesso) {
+            fetchVendas();
+          }
+        }}
+      />
     </div>
   );
 };

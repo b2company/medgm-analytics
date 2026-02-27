@@ -1,5 +1,6 @@
 import React, { useState, useEffect } from 'react';
 import { useNavigate, useLocation } from 'react-router-dom';
+import FinanceiroDashboard from './FinanceiroDashboard';
 import DFC from './DFC';
 import DRE from './DRE';
 import Planejamento from './Planejamento';
@@ -11,7 +12,7 @@ const Financeiro = () => {
 
   const getSubTabFromURL = () => {
     const hash = location.hash.replace('#', '');
-    return hash || 'transacoes';
+    return hash || 'dashboard';
   };
 
   const [activeSubTab, setActiveSubTab] = useState(getSubTabFromURL());
@@ -59,6 +60,7 @@ const Financeiro = () => {
       <div className="border-b border-gray-200 mb-6">
         <nav className="flex space-x-8">
           {[
+            { id: 'dashboard', label: 'Dashboard' },
             { id: 'transacoes', label: 'Transações' },
             { id: 'dfc', label: 'DFC' },
             { id: 'dre', label: 'DRE' },
@@ -80,6 +82,7 @@ const Financeiro = () => {
       </div>
 
       {/* Conteúdo das sub-abas */}
+      {activeSubTab === 'dashboard' && <FinanceiroDashboard mes={mes} ano={ano} />}
       {activeSubTab === 'transacoes' && <TransacoesFinanceiras mes={mes} ano={ano} />}
       {activeSubTab === 'dfc' && <DFC mes={mes} ano={ano} />}
       {activeSubTab === 'dre' && <DRE mes={mes} ano={ano} />}

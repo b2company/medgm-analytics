@@ -16,6 +16,9 @@ import HorizontalFunnel from '../components/HorizontalFunnel';
 import CompactHorizontalFunnel from '../components/CompactHorizontalFunnel';
 import ComboChartWithLine from '../components/ComboChartWithLine';
 import ExpandableCard from '../components/ExpandableCard';
+import EditableDataTable from '../components/EditableDataTable';
+import FilterPanel from '../components/FilterPanel';
+import { FilterSelect, FilterDateRange } from '../components/FilterInput';
 import { formatNumber, formatPercent } from '../utils/formatters';
 
 const API_URL = import.meta.env.VITE_API_URL || 'http://localhost:8000';
@@ -24,6 +27,7 @@ const SDR = ({ mes: mesProp, ano: anoProp }) => {
   const [metricas, setMetricas] = useState([]);
   const [dashboard, setDashboard] = useState(null);
   const [dashboardDiario, setDashboardDiario] = useState(null);
+  const [dashboardMesAnterior, setDashboardMesAnterior] = useState(null);
   const [closerDiario, setCloserDiario] = useState(null);
   const [loading, setLoading] = useState(false);
   const [showModal, setShowModal] = useState(false);
@@ -102,16 +106,47 @@ const SDR = ({ mes: mesProp, ano: anoProp }) => {
         params.append('funil', filtroFunil);
       }
 
-      // Buscar dados do SDR e Closer em paralelo
-      const [sdrResponse, closerResponse] = await Promise.all([
+      // Calcular mês anterior
+      const mesAnterior = mesAno.mes === 1 ? 12 : mesAno.mes - 1;
+      const anoAnterior = mesAno.mes === 1 ? mesAno.ano - 1 : mesAno.ano;
+
+      const paramsMesAnterior = new URLSearchParams({
+        mes: mesAnterior,
+        ano: anoAnterior
+      });
+      if (filtroSDR) {
+        paramsMesAnterior.append('sdr', filtroSDR);
+      }
+      if (filtroFunil) {
+        paramsMesAnterior.append('funil', filtroFunil);
+      }
+
+      // Buscar dados do SDR (atual e anterior), Closer e Metas em paralelo
+      const [sdrResponse, sdrMesAnteriorResponse, closerResponse, metasResponse] = await Promise.all([
         fetch(`${API_URL}/comercial/dashboard/sdr-diario?${params}`),
-        fetch(`${API_URL}/comercial/dashboard/closer-diario?mes=${mesAno.mes}&ano=${mesAno.ano}`)
+        fetch(`${API_URL}/comercial/dashboard/sdr-diario?${paramsMesAnterior}`),
+        fetch(`${API_URL}/comercial/dashboard/closer-diario?mes=${mesAno.mes}&ano=${mesAno.ano}`),
+        fetch(`${API_URL}/metas/?mes=${mesAno.mes}&ano=${mesAno.ano}`)
       ]);
 
       const sdrData = await sdrResponse.json();
+      const sdrMesAnteriorData = await sdrMesAnteriorResponse.json();
       const closerData = await closerResponse.json();
+      const metasData = await metasResponse.json();
+
+      // Encontrar meta do SDR
+      const metaSDR = metasData.metas?.find(m =>
+        m.pessoa?.funcao?.toLowerCase().includes('sdr')
+      );
+
+      // Adicionar metas aos totais do SDR se existirem
+      if (metaSDR && sdrData.totais) {
+        sdrData.totais.reunioes_agendadas_meta = metaSDR.meta_reunioes_agendadas || null;
+        sdrData.totais.reunioes_realizadas_meta = metaSDR.meta_reunioes || null;
+      }
 
       setDashboardDiario(sdrData);
+      setDashboardMesAnterior(sdrMesAnteriorData);
       setCloserDiario(closerData);
 
       // Extrair funis disponíveis do breakdown_funil
@@ -167,17 +202,39 @@ const SDR = ({ mes: mesProp, ano: anoProp }) => {
     }
   };
 
-  const handleDelete = async (id) => {
+  const handleDelete = async (row) => {
     if (!confirm('Tem certeza que deseja deletar esta metrica?')) return;
 
     try {
-      const response = await fetch(`${API_URL}/comercial/sdr/${id}`, { method: 'DELETE' });
+      const response = await fetch(`${API_URL}/comercial/sdr/${row.id}`, { method: 'DELETE' });
       if (response.ok) {
         alert('Metrica deletada!');
         fetchData();
       }
     } catch (error) {
       console.error('Erro:', error);
+    }
+  };
+
+  const handleInlineUpdate = async (id, updatedRow) => {
+    try {
+      const response = await fetch(`${API_URL}/comercial/sdr/${id}`, {
+        method: 'PUT',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify(updatedRow)
+      });
+
+      if (response.ok) {
+        await fetchData();
+        await fetchDashboardDiario();
+      } else {
+        alert('Erro ao salvar');
+        throw new Error('Falha ao salvar');
+      }
+    } catch (error) {
+      console.error('Erro:', error);
+      alert('Erro ao atualizar. Tente novamente.');
+      throw error;
     }
   };
 
@@ -191,6 +248,12 @@ const SDR = ({ mes: mesProp, ano: anoProp }) => {
   };
 
   const formatPercent = (value) => `${(value || 0).toFixed(1)}%`;
+
+  // Calcular trend (variação % em relação ao mês anterior)
+  const calcularTrend = (valorAtual, valorAnterior) => {
+    if (!valorAnterior || valorAnterior === 0) return null;
+    return ((valorAtual - valorAnterior) / valorAnterior) * 100;
+  };
 
   // Extrair valores únicos para os dropdowns
   const sdrsUnicos = [...new Set(metricas.map(m => m.sdr))].sort();
@@ -307,6 +370,7 @@ const SDR = ({ mes: mesProp, ano: anoProp }) => {
             meta={dashboardDiario.totais.leads_recebidos_meta}
             formatter={formatNumber}
             showProgress={!!dashboardDiario.totais.leads_recebidos_meta}
+            trend={dashboardMesAnterior?.totais ? calcularTrend(dashboardDiario.totais.leads_recebidos, dashboardMesAnterior.totais.leads_recebidos) : null}
             info="Total de leads que entraram no funil do SDR neste mês. Cada lead é uma oportunidade de agendamento de reunião."
           />
           <KPICardWithProgress
@@ -315,6 +379,7 @@ const SDR = ({ mes: mesProp, ano: anoProp }) => {
             meta={dashboardDiario.totais.reunioes_agendadas_meta}
             formatter={formatNumber}
             showProgress={!!dashboardDiario.totais.reunioes_agendadas_meta}
+            trend={dashboardMesAnterior?.totais ? calcularTrend(dashboardDiario.totais.reunioes_agendadas, dashboardMesAnterior.totais.reunioes_agendadas) : null}
             info="Número de reuniões que o SDR conseguiu marcar com os leads. A barra mostra o progresso em relação à meta mensal."
           />
           <KPICardWithProgress
@@ -322,6 +387,7 @@ const SDR = ({ mes: mesProp, ano: anoProp }) => {
             value={dashboardDiario.totais.reunioes_realizadas}
             meta={dashboardDiario.totais.reunioes_realizadas_meta}
             formatter={formatNumber}
+            trend={dashboardMesAnterior?.totais ? calcularTrend(dashboardDiario.totais.reunioes_realizadas, dashboardMesAnterior.totais.reunioes_realizadas) : null}
             info="Reuniões que de fato aconteceram (leads compareceram). Este é o número que passa para o Closer."
           />
           <KPICardWithProgress
@@ -331,6 +397,7 @@ const SDR = ({ mes: mesProp, ano: anoProp }) => {
             formatter={(v) => formatPercent(v)}
             subtitle={`${formatNumber(dashboardDiario.totais.reunioes_agendadas)} de ${formatNumber(dashboardDiario.totais.leads_recebidos)} leads`}
             progressPercent={dashboardDiario.totais.tx_agendamento}
+            trend={dashboardMesAnterior?.totais ? calcularTrend(dashboardDiario.totais.tx_agendamento, dashboardMesAnterior.totais.tx_agendamento) : null}
             info="Percentual de leads que aceitaram agendar uma reunião. Quanto maior, melhor a qualificação e abordagem do SDR."
           />
           <KPICardWithProgress
@@ -340,6 +407,7 @@ const SDR = ({ mes: mesProp, ano: anoProp }) => {
             formatter={(v) => formatPercent(v)}
             subtitle={`${formatNumber(dashboardDiario.totais.reunioes_realizadas)} de ${formatNumber(dashboardDiario.totais.reunioes_agendadas)} agendadas`}
             progressPercent={(dashboardDiario.totais.tx_comparecimento / 80) * 100}
+            trend={dashboardMesAnterior?.totais ? calcularTrend(dashboardDiario.totais.tx_comparecimento, dashboardMesAnterior.totais.tx_comparecimento) : null}
             info="Percentual de leads que compareceram às reuniões agendadas. Taxa baixa pode indicar problema na qualificação ou confirmação. Meta: 80%"
           />
         </div>
@@ -379,18 +447,26 @@ const SDR = ({ mes: mesProp, ano: anoProp }) => {
           {/* Gráfico 1: Atividade do SDR */}
           <ExpandableCard
             title="Atividade do SDR - Dia a Dia"
-            info="Leads recebidos pelo SDR e reuniões que ele agendou naquele dia (podem ser para dias futuros)."
+            info="Leads recebidos pelo SDR e reuniões que ele agendou naquele dia. A linha mostra a taxa de agendamento do dia."
           >
-            <GroupedBarChart
+            <ComboChartWithLine
               data={dashboardDiario.dados_diarios.map(d => ({
                 name: `${d.dia}`,
                 'Leads Recebidos': d.leads_recebidos || 0,
-                'Reuniões Agendadas': d.reunioes_agendadas || 0
+                'Reuniões Agendadas': d.reunioes_agendadas || 0,
+                'Taxa Agendamento': d.leads_recebidos > 0
+                  ? (d.reunioes_agendadas / d.leads_recebidos * 100)
+                  : 0
               }))}
               bars={[
                 { key: 'Leads Recebidos', color: '#9CA3AF' },
                 { key: 'Reuniões Agendadas', color: '#3B82F6' }
               ]}
+              line={{
+                key: 'Taxa Agendamento',
+                name: 'Tx Agendamento (%)',
+                color: '#EF4444'
+              }}
               height={300}
             />
           </ExpandableCard>
@@ -464,6 +540,38 @@ const SDR = ({ mes: mesProp, ano: anoProp }) => {
       )}
 
 
+      {/* Filtros para Tabela de Métricas Detalhadas */}
+      <FilterPanel
+        filters={filtros}
+        onFilterChange={(key, value) => setFiltros({ ...filtros, [key]: value })}
+        onClearFilters={() => setFiltros({ dataInicio: '', dataFim: '', sdr: '', funil: '' })}
+        totalRecords={metricas.length}
+        filteredRecords={metricasFiltradas.length}
+      >
+        <FilterDateRange
+          labelInicio="Data Início"
+          labelFim="Data Fim"
+          valueInicio={filtros.dataInicio}
+          valueFim={filtros.dataFim}
+          onChangeInicio={(value) => setFiltros({ ...filtros, dataInicio: value })}
+          onChangeFim={(value) => setFiltros({ ...filtros, dataFim: value })}
+        />
+        <FilterSelect
+          label="SDR"
+          value={filtros.sdr}
+          onChange={(value) => setFiltros({ ...filtros, sdr: value })}
+          options={sdrsUnicos}
+          placeholder="Todos os SDRs"
+        />
+        <FilterSelect
+          label="Funil"
+          value={filtros.funil}
+          onChange={(value) => setFiltros({ ...filtros, funil: value })}
+          options={funisUnicos}
+          placeholder="Todos os Funis"
+        />
+      </FilterPanel>
+
       {/* Tabela */}
       <div className="bg-white rounded-lg shadow overflow-hidden">
         <div className="px-6 py-4 border-b">
@@ -516,112 +624,25 @@ const SDR = ({ mes: mesProp, ano: anoProp }) => {
             <p className="text-sm">Clique em "+ Nova Metrica" para adicionar dados.</p>
           </div>
         ) : (
-          <div className="overflow-x-auto">
-            <table className="min-w-full divide-y divide-gray-200">
-              <thead className="bg-gray-50">
-                <tr>
-                  <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase">Data</th>
-                  <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase">SDR</th>
-                  <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase">Funil</th>
-                  <th className="px-6 py-3 text-center text-xs font-medium text-gray-500 uppercase">Leads</th>
-                  <th className="px-6 py-3 text-center text-xs font-medium text-gray-500 uppercase">Agendadas</th>
-                  <th className="px-6 py-3 text-center text-xs font-medium text-gray-500 uppercase">Tx Agend.</th>
-                  <th className="px-6 py-3 text-center text-xs font-medium text-gray-500 uppercase">Realizadas</th>
-                  <th className="px-6 py-3 text-center text-xs font-medium text-gray-500 uppercase">Tx Comp.</th>
-                  <th className="px-6 py-3 text-center text-xs font-medium text-gray-500 uppercase">Meta</th>
-                  <th className="px-6 py-3 text-center text-xs font-medium text-gray-500 uppercase">Acoes</th>
-                </tr>
-                <tr className="bg-gray-100">
-                  <th className="px-2 py-2">
-                    <div className="flex flex-col gap-1">
-                      <input
-                        type="text"
-                        placeholder="De DD/MM/AAAA"
-                        value={filtros.dataInicio}
-                        onChange={(e) => setFiltros({...filtros, dataInicio: e.target.value})}
-                        className="w-full px-2 py-1 text-xs border rounded"
-                        maxLength={10}
-                      />
-                      <input
-                        type="text"
-                        placeholder="Até DD/MM/AAAA"
-                        value={filtros.dataFim}
-                        onChange={(e) => setFiltros({...filtros, dataFim: e.target.value})}
-                        className="w-full px-2 py-1 text-xs border rounded"
-                        maxLength={10}
-                      />
-                    </div>
-                  </th>
-                  <th className="px-2 py-2">
-                    <select
-                      value={filtros.sdr}
-                      onChange={(e) => setFiltros({...filtros, sdr: e.target.value})}
-                      className="w-full px-2 py-1 text-xs border rounded"
-                    >
-                      <option value="">Todos</option>
-                      {sdrsUnicos.map(sdr => (
-                        <option key={sdr} value={sdr}>{sdr}</option>
-                      ))}
-                    </select>
-                  </th>
-                  <th className="px-2 py-2">
-                    <select
-                      value={filtros.funil}
-                      onChange={(e) => setFiltros({...filtros, funil: e.target.value})}
-                      className="w-full px-2 py-1 text-xs border rounded"
-                    >
-                      <option value="">Todos</option>
-                      {funisUnicos.map(funil => (
-                        <option key={funil} value={funil}>{funil}</option>
-                      ))}
-                    </select>
-                  </th>
-                  <th className="px-2 py-2"></th>
-                  <th className="px-2 py-2"></th>
-                  <th className="px-2 py-2"></th>
-                  <th className="px-2 py-2"></th>
-                  <th className="px-2 py-2"></th>
-                  <th className="px-2 py-2"></th>
-                  <th className="px-2 py-2"></th>
-                </tr>
-              </thead>
-              <tbody className="bg-white divide-y divide-gray-200">
-                {metricasFiltradas.map((m) => (
-                  <tr key={m.id} className="hover:bg-gray-50 transition-colors">
-                    <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-600">
-                      {m.data ? new Date(m.data).toLocaleDateString('pt-BR') : '-'}
-                    </td>
-                    <td className="px-6 py-4 whitespace-nowrap font-medium">{m.sdr}</td>
-                    <td className="px-6 py-4 whitespace-nowrap">{m.funil}</td>
-                    <td className="px-6 py-4 text-center">{m.leads_recebidos}</td>
-                    <td className="px-6 py-4 text-center">{m.reunioes_agendadas}</td>
-                    <td className="px-6 py-4 text-center font-semibold text-blue-600">
-                      {formatPercent(m.tx_agendamento)}
-                    </td>
-                    <td className="px-6 py-4 text-center font-semibold">{m.reunioes_realizadas}</td>
-                    <td className="px-6 py-4 text-center font-semibold text-green-600">
-                      {formatPercent(m.tx_comparecimento)}
-                    </td>
-                    <td className="px-6 py-4 text-center text-gray-600">{m.meta_reunioes}</td>
-                    <td className="px-6 py-4 text-center">
-                      <button
-                        onClick={() => { setEditingMetrica(m); setShowModal(true); }}
-                        className="text-blue-600 hover:text-blue-800 mr-3"
-                      >
-                        Editar
-                      </button>
-                      <button
-                        onClick={() => handleDelete(m.id)}
-                        className="text-red-600 hover:text-red-800"
-                      >
-                        Deletar
-                      </button>
-                    </td>
-                  </tr>
-                ))}
-              </tbody>
-            </table>
-          </div>
+          <EditableDataTable
+            columns={[
+              { key: 'data', label: 'Data', format: 'date', sortable: true },
+              { key: 'sdr', label: 'SDR', sortable: true, bold: true },
+              { key: 'funil', label: 'Funil', sortable: true },
+              { key: 'leads_recebidos', label: 'Leads', sortable: true, align: 'center' },
+              { key: 'reunioes_agendadas', label: 'Agendadas', sortable: true, align: 'center' },
+              { key: 'tx_agendamento', label: 'Tx Agend.', format: 'percent', sortable: true, align: 'center' },
+              { key: 'reunioes_realizadas', label: 'Realizadas', sortable: true, align: 'center', bold: true },
+              { key: 'tx_comparecimento', label: 'Tx Comp.', format: 'percent', sortable: true, align: 'center' },
+              { key: 'meta_reunioes', label: 'Meta', sortable: true, align: 'center' }
+            ]}
+            data={metricasFiltradas}
+            editableColumns={['sdr', 'funil', 'leads_recebidos', 'reunioes_agendadas', 'reunioes_realizadas', 'meta_reunioes']}
+            showTotal={false}
+            showActions={true}
+            onUpdate={handleInlineUpdate}
+            onDelete={handleDelete}
+          />
         )}
       </div>
 

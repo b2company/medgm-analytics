@@ -3,29 +3,14 @@ import { getDRE, getDREAnual } from '../services/api';
 import LineChart from '../components/LineChart';
 import PieChart from '../components/PieChart';
 
-const DRE = () => {
-  const [mes, setMes] = useState(new Date().getMonth() + 1);
-  const [ano, setAno] = useState(new Date().getFullYear());
+const DRE = ({ mes: mesProp, ano: anoProp }) => {
+  const mes = mesProp || new Date().getMonth() + 1;
+  const ano = anoProp || new Date().getFullYear();
   const [dados, setDados] = useState(null);
   const [dadosAnuais, setDadosAnuais] = useState(null);
   const [dadosMesAnterior, setDadosMesAnterior] = useState(null);
   const [loading, setLoading] = useState(false);
   const [viewMode, setViewMode] = useState('mensal'); // mensal | anual
-
-  const meses = [
-    { value: 1, label: 'Janeiro' },
-    { value: 2, label: 'Fevereiro' },
-    { value: 3, label: 'Marco' },
-    { value: 4, label: 'Abril' },
-    { value: 5, label: 'Maio' },
-    { value: 6, label: 'Junho' },
-    { value: 7, label: 'Julho' },
-    { value: 8, label: 'Agosto' },
-    { value: 9, label: 'Setembro' },
-    { value: 10, label: 'Outubro' },
-    { value: 11, label: 'Novembro' },
-    { value: 12, label: 'Dezembro' },
-  ];
 
   useEffect(() => {
     loadData();
@@ -71,103 +56,6 @@ const DRE = () => {
     return `${(value || 0).toFixed(1)}%`;
   };
 
-  const gerarInsights = (dados) => {
-    if (!dados) return [];
-
-    const insights = [];
-
-    // Benchmark: Margem Bruta (SaaS ideal: 70-80%, Consultoria: 50-60%)
-    if (dados.margem_bruta_pct < 50) {
-      insights.push({
-        tipo: 'alerta',
-        titulo: '⚠️ Margem Bruta Baixa',
-        descricao: `${formatPercent(dados.margem_bruta_pct)} está abaixo do ideal (50-80%). CMV muito alto pode indicar ineficiência operacional.`,
-        acao: 'Revisar custos diretos, automatizar processos, renegociar fornecedores.'
-      });
-    } else if (dados.margem_bruta_pct >= 70) {
-      insights.push({
-        tipo: 'sucesso',
-        titulo: '✓ Margem Bruta Saudável',
-        descricao: `${formatPercent(dados.margem_bruta_pct)} está no range ideal para negócios de serviço.`,
-        acao: null
-      });
-    }
-
-    // Margem EBITDA
-    if (dados.margem_ebitda_pct < 0) {
-      insights.push({
-        tipo: 'critico',
-        titulo: '🚨 EBITDA Negativo',
-        descricao: `Empresa operando no prejuízo. Despesas operacionais (${formatCurrency(dados.despesas?.total)}) excedem lucro bruto.`,
-        acao: 'URGENTE: Reduzir custos fixos ou aumentar receita imediatamente.'
-      });
-    } else if (dados.margem_ebitda_pct < 20) {
-      insights.push({
-        tipo: 'atencao',
-        titulo: '⚡ EBITDA Apertado',
-        descricao: `${formatPercent(dados.margem_ebitda_pct)} é baixo. Pouca margem para despesas não-operacionais.`,
-        acao: 'Otimizar estrutura de custos, revisar eficiência da equipe.'
-      });
-    } else if (dados.margem_ebitda_pct >= 30) {
-      insights.push({
-        tipo: 'sucesso',
-        titulo: '💪 EBITDA Forte',
-        descricao: `${formatPercent(dados.margem_ebitda_pct)} indica operação saudável e escalável.`,
-        acao: null
-      });
-    }
-
-    // Margem Líquida
-    if (dados.lucro_liquido < 0) {
-      insights.push({
-        tipo: 'critico',
-        titulo: '🔴 Prejuízo no Mês',
-        descricao: `Lucro líquido de ${formatCurrency(dados.lucro_liquido)}. Gastos totais superam receita.`,
-        acao: 'Análise urgente: revisar todas as categorias de custo e buscar novas receitas.'
-      });
-    } else if (dados.margem_liquida_pct >= 20) {
-      insights.push({
-        tipo: 'sucesso',
-        titulo: '🎯 Lucratividade Alta',
-        descricao: `${formatPercent(dados.margem_liquida_pct)} de margem líquida é excelente.`,
-        acao: 'Considerar reinvestir lucros em crescimento ou reserva de emergência.'
-      });
-    }
-
-    // Análise de despesas operacionais vs receita
-    const despesas_pct = ((dados.despesas?.total || 0) / dados.receita_liquida * 100);
-    if (despesas_pct > 50) {
-      insights.push({
-        tipo: 'atencao',
-        titulo: '💸 Despesas Operacionais Altas',
-        descricao: `${formatPercent(despesas_pct)} da receita vai para despesas operacionais.`,
-        acao: 'Identificar despesas desnecessárias, automatizar processos, terceirizar atividades não-core.'
-      });
-    }
-
-    // Deduções muito altas
-    if (dados.deducoes > dados.receita_bruta * 0.15) {
-      insights.push({
-        tipo: 'info',
-        titulo: '📊 Deduções Significativas',
-        descricao: `${formatCurrency(dados.deducoes)} em impostos/deduções (${formatPercent((dados.deducoes / dados.receita_bruta) * 100)}).`,
-        acao: 'Revisar regime tributário, considerar consultoria fiscal para otimização.'
-      });
-    }
-
-    // Despesas financeiras altas
-    if (dados.despesas_financeiras > dados.receita_liquida * 0.05) {
-      insights.push({
-        tipo: 'alerta',
-        titulo: '💳 Despesas Financeiras Elevadas',
-        descricao: `${formatCurrency(dados.despesas_financeiras)} em juros/taxas.`,
-        acao: 'Renegociar dívidas, reduzir uso de crédito, buscar capital mais barato.'
-      });
-    }
-
-    return insights;
-  };
-
   return (
     <div className="max-w-7xl mx-auto py-8 px-4">
       {/* Header */}
@@ -199,27 +87,6 @@ const DRE = () => {
               Anual
             </button>
           </div>
-
-          {viewMode === 'mensal' && (
-            <select
-              value={mes}
-              onChange={(e) => setMes(parseInt(e.target.value))}
-              className="px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-primary"
-            >
-              {meses.map(m => (
-                <option key={m.value} value={m.value}>{m.label}</option>
-              ))}
-            </select>
-          )}
-          <select
-            value={ano}
-            onChange={(e) => setAno(parseInt(e.target.value))}
-            className="px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-primary"
-          >
-            <option value={2025}>2025</option>
-            <option value={2026}>2026</option>
-            <option value={2027}>2027</option>
-          </select>
         </div>
       </div>
 
@@ -269,39 +136,6 @@ const DRE = () => {
               </div>
             </div>
           </div>
-
-          {/* Insights Automáticos */}
-          {gerarInsights(dados).length > 0 && (
-            <div className="bg-gradient-to-r from-blue-50 to-indigo-50 border border-blue-200 rounded-lg p-6">
-              <h3 className="text-lg font-bold text-gray-900 mb-4 flex items-center gap-2">
-                <span>💡</span>
-                Análise Automática do DRE
-              </h3>
-              <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-                {gerarInsights(dados).map((insight, idx) => {
-                  const bgColor = {
-                    'sucesso': 'bg-green-50 border-green-300 text-green-900',
-                    'info': 'bg-blue-50 border-blue-300 text-blue-900',
-                    'atencao': 'bg-yellow-50 border-yellow-300 text-yellow-900',
-                    'alerta': 'bg-orange-50 border-orange-300 text-orange-900',
-                    'critico': 'bg-red-50 border-red-300 text-red-900'
-                  }[insight.tipo] || 'bg-gray-50 border-gray-300 text-gray-900';
-
-                  return (
-                    <div key={idx} className={`border-l-4 rounded-r-lg p-4 ${bgColor}`}>
-                      <div className="font-bold text-sm mb-2">{insight.titulo}</div>
-                      <div className="text-sm mb-2">{insight.descricao}</div>
-                      {insight.acao && (
-                        <div className="text-xs opacity-90 mt-2 pt-2 border-t border-current/20">
-                          <strong>Ação:</strong> {insight.acao}
-                        </div>
-                      )}
-                    </div>
-                  );
-                })}
-              </div>
-            </div>
-          )}
 
           {/* Comparação com Mês Anterior */}
           {dadosMesAnterior && (

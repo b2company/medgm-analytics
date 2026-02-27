@@ -298,13 +298,15 @@ class Meta(Base):
     # Metas possiveis
     meta_ativacoes = Column(Integer, nullable=True)
     meta_leads = Column(Integer, nullable=True)
-    meta_reunioes = Column(Integer, nullable=True)
+    meta_reunioes_agendadas = Column(Integer, nullable=True)  # SDR: meta de reuniões agendadas
+    meta_reunioes = Column(Integer, nullable=True)  # SDR: meta de reuniões realizadas (legado)
     meta_vendas = Column(Integer, nullable=True)
     meta_faturamento = Column(Float, nullable=True)
 
     # Realizado (calculado automaticamente)
     realizado_ativacoes = Column(Integer, nullable=True)
     realizado_leads = Column(Integer, nullable=True)
+    realizado_reunioes_agendadas = Column(Integer, nullable=True)
     realizado_reunioes = Column(Integer, nullable=True)
     realizado_vendas = Column(Integer, nullable=True)
     realizado_faturamento = Column(Float, nullable=True)
@@ -312,6 +314,7 @@ class Meta(Base):
     # Delta (realizado - meta)
     delta_ativacoes = Column(Integer, nullable=True)
     delta_leads = Column(Integer, nullable=True)
+    delta_reunioes_agendadas = Column(Integer, nullable=True)
     delta_reunioes = Column(Integer, nullable=True)
     delta_vendas = Column(Integer, nullable=True)
     delta_faturamento = Column(Float, nullable=True)

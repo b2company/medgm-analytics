@@ -13,5 +13,19 @@ export default defineConfig({
         rewrite: (path) => path.replace(/^\/api/, '')
       }
     }
+  },
+  build: {
+    rollupOptions: {
+      output: {
+        manualChunks: {
+          // Vendor chunks only - let Vite handle page splitting automatically
+          'react-vendor': ['react', 'react-dom', 'react-router-dom'],
+          'chart-vendor': ['recharts']
+        }
+      }
+    },
+    chunkSizeWarningLimit: 600,
+    sourcemap: false,
+    minify: 'esbuild' // Use esbuild instead of terser (faster and no extra dependency)
   }
 })

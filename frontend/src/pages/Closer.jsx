@@ -15,6 +15,9 @@ import FunnelChart from '../components/FunnelChart';
 import KPICardWithProgress from '../components/KPICardWithProgress';
 import HorizontalFunnel from '../components/HorizontalFunnel';
 import ExpandableCard from '../components/ExpandableCard';
+import EditableDataTable from '../components/EditableDataTable';
+import FilterPanel from '../components/FilterPanel';
+import { FilterSelect, FilterDateRange } from '../components/FilterInput';
 import { formatNumber, formatCurrency, formatPercent } from '../utils/formatters';
 
 const API_URL = import.meta.env.VITE_API_URL || 'http://localhost:8000';
@@ -23,6 +26,7 @@ const Closer = ({ mes: mesProp, ano: anoProp }) => {
   const [metricas, setMetricas] = useState([]);
   const [dashboard, setDashboard] = useState(null);
   const [dashboardDiario, setDashboardDiario] = useState(null);
+  const [dashboardMesAnterior, setDashboardMesAnterior] = useState(null);
   const [metasIndividuais, setMetasIndividuais] = useState([]);
   const [loading, setLoading] = useState(false);
   const [showModal, setShowModal] = useState(false);
@@ -77,10 +81,13 @@ const Closer = ({ mes: mesProp, ano: anoProp }) => {
         fetch(`${API_URL}/comercial/closer?mes=${mesAno.mes}&ano=${mesAno.ano}`),
         fetch(`${API_URL}/comercial/dashboard/closer?mes=${mesAno.mes}&ano=${mesAno.ano}`)
       ]);
-      setMetricas(await metricasRes.json());
-      setDashboard(await dashRes.json());
+      const metricasData = await metricasRes.json();
+      const dashData = await dashRes.json();
+
+      setMetricas(metricasData);
+      setDashboard(dashData);
     } catch (error) {
-      console.error('Erro:', error);
+      console.error('❌ Erro ao buscar dados:', error);
     } finally {
       setLoading(false);
     }
@@ -95,18 +102,32 @@ const Closer = ({ mes: mesProp, ano: anoProp }) => {
       if (filtroCloser) params.append('closer', filtroCloser);
       if (filtroFunil) params.append('funil', filtroFunil);
 
-      const [dashboardResponse, metasResponse] = await Promise.all([
+      // Calcular mês anterior
+      const mesAnterior = mesAno.mes === 1 ? 12 : mesAno.mes - 1;
+      const anoAnterior = mesAno.mes === 1 ? mesAno.ano - 1 : mesAno.ano;
+
+      const paramsMesAnterior = new URLSearchParams({
+        mes: mesAnterior,
+        ano: anoAnterior
+      });
+      if (filtroCloser) paramsMesAnterior.append('closer', filtroCloser);
+      if (filtroFunil) paramsMesAnterior.append('funil', filtroFunil);
+
+      const [dashboardResponse, dashboardMesAnteriorResponse, metasResponse] = await Promise.all([
         fetch(`${API_URL}/comercial/dashboard/closer-diario?${params}`),
+        fetch(`${API_URL}/comercial/dashboard/closer-diario?${paramsMesAnterior}`),
         fetch(`${API_URL}/metas/?mes=${mesAno.mes}&ano=${mesAno.ano}`)
       ]);
 
       const data = await dashboardResponse.json();
+      const dataMesAnterior = await dashboardMesAnteriorResponse.json();
       const metasData = await metasResponse.json();
 
       setDashboardDiario(data);
+      setDashboardMesAnterior(dataMesAnterior);
       setMetasIndividuais(metasData.metas || []);
     } catch (error) {
-      console.error('Erro ao buscar dashboard diário:', error);
+      console.error('❌ Erro ao buscar dashboard diário:', error);
     }
   };
 
@@ -128,6 +149,10 @@ const Closer = ({ mes: mesProp, ano: anoProp }) => {
 
   // Função helper para agrupar dados por semana
   const agruparPorSemana = (dadosDiarios, campo) => {
+    if (!dadosDiarios || dadosDiarios.length === 0) {
+      return [];
+    }
+
     const semanas = {
       'S1 (1-7)': 0,
       'S2 (8-14)': 0,
@@ -143,7 +168,9 @@ const Closer = ({ mes: mesProp, ano: anoProp }) => {
         dia.dia <= 21 ? 'S3 (15-21)' :
         dia.dia <= 28 ? 'S4 (22-28)' : 'S5 (29+)';
 
-      semanas[semana] += dia[campo] || 0;
+      // Usar faturamento_bruto se faturamento_liquido não existir
+      const valor = dia[campo] !== undefined ? dia[campo] : (campo === 'faturamento_liquido' ? dia.faturamento_bruto || 0 : 0);
+      semanas[semana] += valor;
     });
 
     return Object.keys(semanas).map(semana => ({
@@ -217,17 +244,39 @@ const Closer = ({ mes: mesProp, ano: anoProp }) => {
     }
   };
 
-  const handleDelete = async (id) => {
+  const handleDelete = async (row) => {
     if (!confirm('Tem certeza que deseja deletar esta metrica?')) return;
 
     try {
-      const response = await fetch(`${API_URL}/comercial/closer/${id}`, { method: 'DELETE' });
+      const response = await fetch(`${API_URL}/comercial/closer/${row.id}`, { method: 'DELETE' });
       if (response.ok) {
         alert('Metrica deletada!');
         fetchData();
       }
     } catch (error) {
       console.error('Erro:', error);
+    }
+  };
+
+  const handleInlineUpdate = async (id, updatedRow) => {
+    try {
+      const response = await fetch(`${API_URL}/comercial/closer/${id}`, {
+        method: 'PUT',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify(updatedRow)
+      });
+
+      if (response.ok) {
+        await fetchData();
+        await fetchDashboardDiario();
+      } else {
+        alert('Erro ao salvar');
+        throw new Error('Falha ao salvar');
+      }
+    } catch (error) {
+      console.error('Erro:', error);
+      alert('Erro ao atualizar. Tente novamente.');
+      throw error;
     }
   };
 
@@ -241,6 +290,12 @@ const Closer = ({ mes: mesProp, ano: anoProp }) => {
   };
 
   const formatPercent = (value) => `${(value || 0).toFixed(1)}%`;
+
+  // Calcular trend (variação % em relação ao mês anterior)
+  const calcularTrend = (valorAtual, valorAnterior) => {
+    if (!valorAnterior || valorAnterior === 0) return null;
+    return ((valorAtual - valorAnterior) / valorAnterior) * 100;
+  };
 
   // Calcular totais gerais
   const totaisGerais = metricas.reduce((acc, m) => ({
@@ -324,24 +379,27 @@ const Closer = ({ mes: mesProp, ano: anoProp }) => {
       {/* Atingimento de Metas */}
       {/* LINHA 1 - KPIs com barra de progresso */}
       {dashboardDiario && dashboardDiario.totais && (
-        <div className="grid grid-cols-1 md:grid-cols-3 lg:grid-cols-7 gap-4 mb-6">
+        <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 xl:grid-cols-4 gap-4 mb-6">
           <KPICardWithProgress
             title="Vendas"
             value={dashboardDiario.totais.vendas}
             showProgress={false}
             formatter={formatNumber}
+            trend={dashboardMesAnterior?.totais ? calcularTrend(dashboardDiario.totais.vendas, dashboardMesAnterior.totais.vendas) : null}
             info="Total de vendas fechadas no mês."
           />
           <KPICardWithProgress
             title="Calls Agendadas"
             value={dashboardDiario.totais.calls_agendadas}
             showProgress={false}
+            trend={dashboardMesAnterior?.totais ? calcularTrend(dashboardDiario.totais.calls_agendadas, dashboardMesAnterior.totais.calls_agendadas) : null}
             info="Calls de fechamento que foram agendadas no mês."
           />
           <KPICardWithProgress
             title="Calls Realizadas"
             value={dashboardDiario.totais.calls_realizadas}
             showProgress={false}
+            trend={dashboardMesAnterior?.totais ? calcularTrend(dashboardDiario.totais.calls_realizadas, dashboardMesAnterior.totais.calls_realizadas) : null}
             info="Calls que de fato aconteceram (podem incluir calls agendadas em meses anteriores)."
           />
           <KPICardWithProgress
@@ -349,26 +407,31 @@ const Closer = ({ mes: mesProp, ano: anoProp }) => {
             value={formatPercent(dashboardDiario.totais.tx_conversao)}
             subtitle={`${formatNumber(dashboardDiario.totais.vendas)} de ${formatNumber(dashboardDiario.totais.calls_realizadas)} calls`}
             showProgress={false}
+            trend={dashboardMesAnterior?.totais ? calcularTrend(dashboardDiario.totais.tx_conversao, dashboardMesAnterior.totais.tx_conversao) : null}
             info="Percentual de calls que resultaram em venda. É o principal indicador de efetividade do Closer."
           />
           <KPICardWithProgress
             title="Faturamento Bruto"
-            value={dashboardDiario.totais.faturamento_bruto}
+            value={dashboardDiario.totais.faturamento_bruto || 0}
             meta={dashboardDiario.totais.faturamento_meta}
             formatter={formatCurrency}
+            trend={dashboardMesAnterior?.totais ? calcularTrend(dashboardDiario.totais.faturamento_bruto, dashboardMesAnterior.totais.faturamento_bruto) : null}
             info="Valor total de faturamento bruto (antes de descontos/impostos). Meta baseada no bruto."
           />
           <KPICardWithProgress
             title="Faturamento Líquido"
-            value={dashboardDiario.totais.faturamento_liquido}
+            value={dashboardDiario.totais.faturamento_liquido || 0}
             showProgress={false}
             formatter={formatCurrency}
+            trend={dashboardMesAnterior?.totais ? calcularTrend(dashboardDiario.totais.faturamento_liquido, dashboardMesAnterior.totais.faturamento_liquido) : null}
             info="Valor líquido faturado no mês (após descontos/impostos)."
           />
           <KPICardWithProgress
             title="Ticket Médio"
-            value={formatCurrency(dashboardDiario.totais.ticket_medio)}
+            value={dashboardDiario.totais.ticket_medio || 0}
             showProgress={false}
+            formatter={formatCurrency}
+            trend={dashboardMesAnterior?.totais ? calcularTrend(dashboardDiario.totais.ticket_medio, dashboardMesAnterior.totais.ticket_medio) : null}
             info="Valor médio de cada venda (faturamento ÷ número de vendas). Ajuda a entender o perfil dos clientes fechados."
           />
         </div>
@@ -692,6 +755,38 @@ const Closer = ({ mes: mesProp, ano: anoProp }) => {
         </div>
       )}
 
+      {/* Filtros para Tabela de Métricas Detalhadas */}
+      <FilterPanel
+        filters={filtros}
+        onFilterChange={(key, value) => setFiltros({ ...filtros, [key]: value })}
+        onClearFilters={() => setFiltros({ dataInicio: '', dataFim: '', closer: '', funil: '' })}
+        totalRecords={metricas.length}
+        filteredRecords={metricasFiltradas.length}
+      >
+        <FilterDateRange
+          labelInicio="Data Início"
+          labelFim="Data Fim"
+          valueInicio={filtros.dataInicio}
+          valueFim={filtros.dataFim}
+          onChangeInicio={(value) => setFiltros({ ...filtros, dataInicio: value })}
+          onChangeFim={(value) => setFiltros({ ...filtros, dataFim: value })}
+        />
+        <FilterSelect
+          label="Closer"
+          value={filtros.closer}
+          onChange={(value) => setFiltros({ ...filtros, closer: value })}
+          options={closersUnicos}
+          placeholder="Todos os Closers"
+        />
+        <FilterSelect
+          label="Funil"
+          value={filtros.funil}
+          onChange={(value) => setFiltros({ ...filtros, funil: value })}
+          options={funisUnicos}
+          placeholder="Todos os Funis"
+        />
+      </FilterPanel>
+
       {/* Tabela Detalhada */}
       <div className="bg-white rounded-lg shadow overflow-hidden">
         <div className="px-6 py-4 border-b">
@@ -730,119 +825,26 @@ const Closer = ({ mes: mesProp, ano: anoProp }) => {
             <p className="text-sm">Clique em "+ Nova Metrica" para adicionar dados.</p>
           </div>
         ) : (
-          <div className="overflow-x-auto">
-            <table className="min-w-full divide-y divide-gray-200">
-              <thead className="bg-gray-50">
-                <tr>
-                  <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase">Data</th>
-                  <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase">Closer</th>
-                  <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase">Funil</th>
-                  <th className="px-6 py-3 text-center text-xs font-medium text-gray-500 uppercase">Agendadas</th>
-                  <th className="px-6 py-3 text-center text-xs font-medium text-gray-500 uppercase">Realizadas</th>
-                  <th className="px-6 py-3 text-center text-xs font-medium text-gray-500 uppercase">Tx Comp.</th>
-                  <th className="px-6 py-3 text-center text-xs font-medium text-gray-500 uppercase">Vendas</th>
-                  <th className="px-6 py-3 text-center text-xs font-medium text-gray-500 uppercase">Tx Conv.</th>
-                  <th className="px-6 py-3 text-center text-xs font-medium text-gray-500 uppercase">Faturamento</th>
-                  <th className="px-6 py-3 text-center text-xs font-medium text-gray-500 uppercase">Ticket</th>
-                  <th className="px-6 py-3 text-center text-xs font-medium text-gray-500 uppercase">Acoes</th>
-                </tr>
-                <tr className="bg-gray-100">
-                  <th className="px-2 py-2">
-                    <div className="flex flex-col gap-1">
-                      <input
-                        type="text"
-                        placeholder="De DD/MM/AAAA"
-                        value={filtros.dataInicio}
-                        onChange={(e) => setFiltros({...filtros, dataInicio: e.target.value})}
-                        className="w-full px-2 py-1 text-xs border rounded"
-                        maxLength={10}
-                      />
-                      <input
-                        type="text"
-                        placeholder="Até DD/MM/AAAA"
-                        value={filtros.dataFim}
-                        onChange={(e) => setFiltros({...filtros, dataFim: e.target.value})}
-                        className="w-full px-2 py-1 text-xs border rounded"
-                        maxLength={10}
-                      />
-                    </div>
-                  </th>
-                  <th className="px-2 py-2">
-                    <select
-                      value={filtros.closer}
-                      onChange={(e) => setFiltros({...filtros, closer: e.target.value})}
-                      className="w-full px-2 py-1 text-xs border rounded"
-                    >
-                      <option value="">Todos</option>
-                      {closersUnicos.map(closer => (
-                        <option key={closer} value={closer}>{closer}</option>
-                      ))}
-                    </select>
-                  </th>
-                  <th className="px-2 py-2">
-                    <select
-                      value={filtros.funil}
-                      onChange={(e) => setFiltros({...filtros, funil: e.target.value})}
-                      className="w-full px-2 py-1 text-xs border rounded"
-                    >
-                      <option value="">Todos</option>
-                      {funisUnicos.map(funil => (
-                        <option key={funil} value={funil}>{funil}</option>
-                      ))}
-                    </select>
-                  </th>
-                  <th className="px-2 py-2"></th>
-                  <th className="px-2 py-2"></th>
-                  <th className="px-2 py-2"></th>
-                  <th className="px-2 py-2"></th>
-                  <th className="px-2 py-2"></th>
-                  <th className="px-2 py-2"></th>
-                  <th className="px-2 py-2"></th>
-                  <th className="px-2 py-2"></th>
-                </tr>
-              </thead>
-              <tbody className="bg-white divide-y divide-gray-200">
-                {metricasFiltradas.map((m) => (
-                  <tr key={m.id} className="hover:bg-gray-50 transition-colors">
-                    <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-600">
-                      {m.data ? new Date(m.data).toLocaleDateString('pt-BR') : '-'}
-                    </td>
-                    <td className="px-6 py-4 whitespace-nowrap font-medium">{m.closer}</td>
-                    <td className="px-6 py-4 whitespace-nowrap">{m.funil}</td>
-                    <td className="px-6 py-4 text-center">{m.calls_agendadas}</td>
-                    <td className="px-6 py-4 text-center">{m.calls_realizadas}</td>
-                    <td className="px-6 py-4 text-center font-semibold text-blue-600">
-                      {formatPercent(m.tx_comparecimento)}
-                    </td>
-                    <td className="px-6 py-4 text-center font-bold text-green-600">{m.vendas}</td>
-                    <td className="px-6 py-4 text-center font-semibold text-purple-600">
-                      {formatPercent(m.tx_conversao)}
-                    </td>
-                    <td className="px-6 py-4 text-center font-semibold text-green-700">
-                      {formatCurrency(m.faturamento_bruto)}
-                    </td>
-                    <td className="px-6 py-4 text-center text-gray-700">
-                      {formatCurrency(m.ticket_medio)}
-                    </td>
-                    <td className="px-6 py-4 text-center">
-                      <button
-                        onClick={() => { setEditingMetrica(m); setShowModal(true); }}
-                        className="text-blue-600 hover:text-blue-800 mr-3"
-                      >
-                        Editar
-                      </button>
-                      <button
-                        onClick={() => handleDelete(m.id)}
-                        className="text-red-600 hover:text-red-800"
-                      >
-                        Deletar
-                      </button>
-                    </td>
-                  </tr>
-                ))}
-              </tbody>
-            </table>
-          </div>
+          <EditableDataTable
+            columns={[
+              { key: 'data', label: 'Data', format: 'date', sortable: true },
+              { key: 'closer', label: 'Closer', sortable: true, bold: true },
+              { key: 'funil', label: 'Funil', sortable: true },
+              { key: 'calls_agendadas', label: 'Agendadas', sortable: true, align: 'center' },
+              { key: 'calls_realizadas', label: 'Realizadas', sortable: true, align: 'center' },
+              { key: 'tx_comparecimento', label: 'Tx Comp.', format: 'percent', sortable: true, align: 'center' },
+              { key: 'vendas', label: 'Vendas', sortable: true, align: 'center', bold: true },
+              { key: 'tx_conversao', label: 'Tx Conv.', format: 'percent', sortable: true, align: 'center' },
+              { key: 'faturamento_bruto', label: 'Faturamento', format: 'currency', sortable: true, align: 'right' },
+              { key: 'ticket_medio', label: 'Ticket', format: 'currency', sortable: true, align: 'right' }
+            ]}
+            data={metricasFiltradas}
+            editableColumns={['closer', 'funil', 'calls_agendadas', 'calls_realizadas', 'vendas', 'faturamento_bruto']}
+            showTotal={false}
+            showActions={true}
+            onUpdate={handleInlineUpdate}
+            onDelete={handleDelete}
+          />
         )}
       </div>
 

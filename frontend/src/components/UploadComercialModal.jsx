@@ -56,9 +56,14 @@ const UploadComercialModal = ({ isOpen, onClose, tipo }) => {
       const data = await response.json();
 
       if (response.ok) {
+        // Mostrar detalhes dos erros se houver
+        const errorDetails = data.detalhes_erros && data.detalhes_erros.length > 0
+          ? `\n\nDetalhes dos erros:\n${data.detalhes_erros.join('\n')}`
+          : '';
+
         setMessage({
-          type: 'success',
-          text: `${data.message}! Importados: ${data.importados}, Erros: ${data.erros}`
+          type: data.erros > 0 ? 'warning' : 'success',
+          text: `${data.message}! Importados: ${data.importados}, Erros: ${data.erros}${errorDetails}`
         });
       } else {
         setMessage({ type: 'danger', text: data.detail || 'Erro ao fazer upload' });
@@ -125,10 +130,12 @@ const UploadComercialModal = ({ isOpen, onClose, tipo }) => {
           </div>
 
           {message && (
-            <div className={`p-3 rounded-lg ${
-              message.type === 'success' ? 'bg-green-50 text-green-800' : 'bg-red-50 text-red-800'
+            <div className={`p-3 rounded-lg max-h-64 overflow-y-auto ${
+              message.type === 'success' ? 'bg-green-50 text-green-800' :
+              message.type === 'warning' ? 'bg-yellow-50 text-yellow-800' :
+              'bg-red-50 text-red-800'
             }`}>
-              {message.text}
+              <pre className="whitespace-pre-wrap text-sm font-mono">{message.text}</pre>
             </div>
           )}
 

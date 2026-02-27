@@ -15,6 +15,9 @@ import TableComparative from '../components/TableComparative';
 import KPICardWithProgress from '../components/KPICardWithProgress';
 import HorizontalFunnel from '../components/HorizontalFunnel';
 import ExpandableCard from '../components/ExpandableCard';
+import EditableDataTable from '../components/EditableDataTable';
+import FilterPanel from '../components/FilterPanel';
+import { FilterSelect, FilterDateRange } from '../components/FilterInput';
 import { formatNumber, formatPercent } from '../utils/formatters';
 
 const API_URL = import.meta.env.VITE_API_URL || 'http://localhost:8000';
@@ -23,6 +26,7 @@ const SocialSelling = ({ mes: mesProp, ano: anoProp }) => {
   const [metricas, setMetricas] = useState([]);
   const [dashboard, setDashboard] = useState(null);
   const [dashboardDiario, setDashboardDiario] = useState(null);
+  const [dashboardMesAnterior, setDashboardMesAnterior] = useState(null);
   const [dadosComparativos, setDadosComparativos] = useState(null);
   const [loading, setLoading] = useState(false);
   const [showModal, setShowModal] = useState(false);
@@ -108,11 +112,53 @@ const SocialSelling = ({ mes: mesProp, ano: anoProp }) => {
       if (filtroFunil) {
         params.append('funil', filtroFunil);
       }
-      const response = await fetch(`${API_URL}/comercial/dashboard/social-selling-diario?${params}`);
-      const data = await response.json();
+
+      // Calcular mês anterior
+      const mesAnterior = mesAno.mes === 1 ? 12 : mesAno.mes - 1;
+      const anoAnterior = mesAno.mes === 1 ? mesAno.ano - 1 : mesAno.ano;
+
+      const paramsMesAnterior = new URLSearchParams({
+        mes: mesAnterior,
+        ano: anoAnterior
+      });
+      if (filtroVendedor) {
+        paramsMesAnterior.append('vendedor', filtroVendedor);
+      }
+      if (filtroFunil) {
+        paramsMesAnterior.append('funil', filtroFunil);
+      }
+
+      // Buscar dados do mês atual, mês anterior e metas em paralelo
+      const [dashboardResponse, dashboardMesAnteriorResponse, metasResponse] = await Promise.all([
+        fetch(`${API_URL}/comercial/dashboard/social-selling-diario?${params}`),
+        fetch(`${API_URL}/comercial/dashboard/social-selling-diario?${paramsMesAnterior}`),
+        fetch(`${API_URL}/metas/?mes=${mesAno.mes}&ano=${mesAno.ano}`)
+      ]);
+
+      const data = await dashboardResponse.json();
+      const dataMesAnterior = await dashboardMesAnteriorResponse.json();
+      const metasData = await metasResponse.json();
+
       console.log('📊 Dashboard Diário recebido:', data);
       console.log('📈 Total de dias:', data.dados_diarios?.length);
+
+      // Encontrar metas de Social Selling (pessoas com função "social selling")
+      const metasSS = metasData.metas?.filter(m =>
+        m.pessoa?.funcao?.toLowerCase().includes('social')
+      ) || [];
+
+      // Somar metas de todas as pessoas de Social Selling
+      const metaAtivacoes = metasSS.reduce((sum, m) => sum + (m.meta_ativacoes || 0), 0);
+      const metaLeads = metasSS.reduce((sum, m) => sum + (m.meta_leads || 0), 0);
+
+      // Adicionar metas aos totais se existirem
+      if (data.totais && (metaAtivacoes > 0 || metaLeads > 0)) {
+        data.totais.ativacoes_meta = metaAtivacoes || data.totais.ativacoes_meta;
+        data.totais.leads_meta = metaLeads || data.totais.leads_meta;
+      }
+
       setDashboardDiario(data);
+      setDashboardMesAnterior(dataMesAnterior);
 
       // Extrair funis disponíveis
       if (data.funis && data.funis.length > 0) {
@@ -270,11 +316,11 @@ const SocialSelling = ({ mes: mesProp, ano: anoProp }) => {
     }
   };
 
-  const handleDelete = async (id) => {
+  const handleDelete = async (row) => {
     if (!confirm('Tem certeza que deseja deletar esta metrica?')) return;
 
     try {
-      const response = await fetch(`${API_URL}/comercial/social-selling/${id}`, {
+      const response = await fetch(`${API_URL}/comercial/social-selling/${row.id}`, {
         method: 'DELETE'
       });
 
@@ -282,12 +328,36 @@ const SocialSelling = ({ mes: mesProp, ano: anoProp }) => {
         alert('Metrica deletada com sucesso!');
         fetchMetricas();
         fetchDashboard();
+        fetchDashboardDiario();
       } else {
         alert('Erro ao deletar metrica');
       }
     } catch (error) {
       console.error('Erro ao deletar metrica:', error);
       alert('Erro ao deletar metrica');
+    }
+  };
+
+  const handleInlineUpdate = async (id, updatedRow) => {
+    try {
+      const response = await fetch(`${API_URL}/comercial/social-selling/${id}`, {
+        method: 'PUT',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify(updatedRow)
+      });
+
+      if (response.ok) {
+        await fetchMetricas();
+        await fetchDashboard();
+        await fetchDashboardDiario();
+      } else {
+        alert('Erro ao salvar');
+        throw new Error('Falha ao salvar');
+      }
+    } catch (error) {
+      console.error('Erro:', error);
+      alert('Erro ao atualizar. Tente novamente.');
+      throw error;
     }
   };
 
@@ -301,6 +371,12 @@ const SocialSelling = ({ mes: mesProp, ano: anoProp }) => {
   };
 
   const formatPercent = (value) => `${(value || 0).toFixed(1)}%`;
+
+  // Calcular trend (variação % em relação ao mês anterior)
+  const calcularTrend = (valorAtual, valorAnterior) => {
+    if (!valorAnterior || valorAnterior === 0) return null;
+    return ((valorAtual - valorAnterior) / valorAnterior) * 100;
+  };
 
   return (
     <div className="min-h-screen bg-gray-50">
@@ -386,7 +462,7 @@ const SocialSelling = ({ mes: mesProp, ano: anoProp }) => {
             meta={dashboardDiario.totais.ativacoes_meta}
             formatter={formatNumber}
             icon="👥"
-            trend={15.3}
+            trend={dashboardMesAnterior?.totais ? calcularTrend(dashboardDiario.totais.ativacoes, dashboardMesAnterior.totais.ativacoes) : null}
             info="Total de ativações de Social Selling (contatos iniciais com potenciais clientes). A barra mostra progresso vs meta mensal."
           />
           <KPICardWithProgress
@@ -395,7 +471,7 @@ const SocialSelling = ({ mes: mesProp, ano: anoProp }) => {
             subtitle={`Taxa: ${formatPercent(dashboardDiario.totais.tx_ativ_conv)}`}
             showProgress={false}
             icon="💬"
-            trend={10.5}
+            trend={dashboardMesAnterior?.totais ? calcularTrend(dashboardDiario.totais.conversoes, dashboardMesAnterior.totais.conversoes) : null}
             info="Ativações que geraram alguma conversão (interesse demonstrado). A taxa indica o percentual de ativações que converteram."
           />
           <KPICardWithProgress
@@ -404,7 +480,7 @@ const SocialSelling = ({ mes: mesProp, ano: anoProp }) => {
             meta={dashboardDiario.totais.leads_meta}
             formatter={formatNumber}
             icon="🎯"
-            trend={9.4}
+            trend={dashboardMesAnterior?.totais ? calcularTrend(dashboardDiario.totais.leads, dashboardMesAnterior.totais.leads) : null}
             info="Conversões qualificadas que viraram leads prontos para o SDR. A barra mostra progresso vs meta mensal."
           />
           <KPICardWithProgress
@@ -413,7 +489,7 @@ const SocialSelling = ({ mes: mesProp, ano: anoProp }) => {
             subtitle={`${formatNumber(dashboardDiario.totais.leads)} de ${formatNumber(dashboardDiario.totais.conversoes)} conversões`}
             showProgress={false}
             icon="📊"
-            trend={6.7}
+            trend={dashboardMesAnterior?.totais ? calcularTrend(dashboardDiario.totais.tx_conv_lead, dashboardMesAnterior.totais.tx_conv_lead) : null}
             info="Percentual de conversões que se tornaram leads qualificados. Indica a qualidade da qualificação do time de Social Selling."
           />
         </div>
@@ -548,6 +624,31 @@ const SocialSelling = ({ mes: mesProp, ano: anoProp }) => {
       )}
 
 
+      {/* Filtros para Tabela de Métricas Detalhadas */}
+      <FilterPanel
+        filters={filtros}
+        onFilterChange={(key, value) => setFiltros({ ...filtros, [key]: value })}
+        onClearFilters={() => setFiltros({ dataInicio: '', dataFim: '', vendedor: '' })}
+        totalRecords={metricas.length}
+        filteredRecords={metricasFiltradas.length}
+      >
+        <FilterDateRange
+          labelInicio="Data Início"
+          labelFim="Data Fim"
+          valueInicio={filtros.dataInicio}
+          valueFim={filtros.dataFim}
+          onChangeInicio={(value) => setFiltros({ ...filtros, dataInicio: value })}
+          onChangeFim={(value) => setFiltros({ ...filtros, dataFim: value })}
+        />
+        <FilterSelect
+          label="Vendedor"
+          value={filtros.vendedor}
+          onChange={(value) => setFiltros({ ...filtros, vendedor: value })}
+          options={vendedoresUnicos}
+          placeholder="Todos os Vendedores"
+        />
+      </FilterPanel>
+
       {/* Tabela de Metricas */}
       <div className="bg-white rounded-lg shadow overflow-hidden">
         <div className="px-6 py-4 border-b border-gray-200">
@@ -586,126 +687,23 @@ const SocialSelling = ({ mes: mesProp, ano: anoProp }) => {
             <p className="text-sm">Clique em "+ Nova Metrica" para adicionar dados.</p>
           </div>
         ) : (
-          <div className="overflow-x-auto">
-            <table className="min-w-full divide-y divide-gray-200">
-              <thead className="bg-gray-50">
-                <tr>
-                  <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
-                    Data
-                  </th>
-                  <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
-                    Vendedor
-                  </th>
-                  <th className="px-6 py-3 text-center text-xs font-medium text-gray-500 uppercase tracking-wider">
-                    Ativacoes
-                  </th>
-                  <th className="px-6 py-3 text-center text-xs font-medium text-gray-500 uppercase tracking-wider">
-                    Conversoes
-                  </th>
-                  <th className="px-6 py-3 text-center text-xs font-medium text-gray-500 uppercase tracking-wider">
-                    Tx Ativ-Conv
-                  </th>
-                  <th className="px-6 py-3 text-center text-xs font-medium text-gray-500 uppercase tracking-wider">
-                    Leads
-                  </th>
-                  <th className="px-6 py-3 text-center text-xs font-medium text-gray-500 uppercase tracking-wider">
-                    Tx Conv-Lead
-                  </th>
-                  <th className="px-6 py-3 text-center text-xs font-medium text-gray-500 uppercase tracking-wider">
-                    Acoes
-                  </th>
-                </tr>
-                <tr className="bg-gray-100">
-                  <th className="px-2 py-2">
-                    <div className="flex flex-col gap-1">
-                      <input
-                        type="text"
-                        placeholder="De DD/MM/AAAA"
-                        value={filtros.dataInicio}
-                        onChange={(e) => setFiltros({...filtros, dataInicio: e.target.value})}
-                        className="w-full px-2 py-1 text-xs border rounded"
-                        maxLength={10}
-                      />
-                      <input
-                        type="text"
-                        placeholder="Até DD/MM/AAAA"
-                        value={filtros.dataFim}
-                        onChange={(e) => setFiltros({...filtros, dataFim: e.target.value})}
-                        className="w-full px-2 py-1 text-xs border rounded"
-                        maxLength={10}
-                      />
-                    </div>
-                  </th>
-                  <th className="px-2 py-2">
-                    <select
-                      value={filtros.vendedor}
-                      onChange={(e) => setFiltros({...filtros, vendedor: e.target.value})}
-                      className="w-full px-2 py-1 text-xs border rounded"
-                    >
-                      <option value="">Todos</option>
-                      {vendedoresUnicos.map(vendedor => (
-                        <option key={vendedor} value={vendedor}>{vendedor}</option>
-                      ))}
-                    </select>
-                  </th>
-                  <th className="px-2 py-2"></th>
-                  <th className="px-2 py-2"></th>
-                  <th className="px-2 py-2"></th>
-                  <th className="px-2 py-2"></th>
-                  <th className="px-2 py-2"></th>
-                  <th className="px-2 py-2"></th>
-                </tr>
-              </thead>
-              <tbody className="bg-white divide-y divide-gray-200">
-                {metricasFiltradas.map((metrica) => (
-                  <tr key={metrica.id} className="hover:bg-gray-50 transition-colors">
-                    <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-600">
-                      {metrica.data ? new Date(metrica.data).toLocaleDateString('pt-BR') : '-'}
-                    </td>
-                    <td className="px-6 py-4 whitespace-nowrap font-medium text-gray-900">
-                      {metrica.vendedor}
-                    </td>
-                    <td className="px-6 py-4 whitespace-nowrap text-center">
-                      {metrica.ativacoes}
-                    </td>
-                    <td className="px-6 py-4 whitespace-nowrap text-center">
-                      {metrica.conversoes}
-                    </td>
-                    <td className="px-6 py-4 whitespace-nowrap text-center">
-                      <span className={`font-semibold ${metrica.tx_ativ_conv >= 50 ? 'text-green-600' : 'text-yellow-600'}`}>
-                        {formatPercent(metrica.tx_ativ_conv)}
-                      </span>
-                    </td>
-                    <td className="px-6 py-4 whitespace-nowrap text-center font-semibold">
-                      {metrica.leads_gerados}
-                    </td>
-                    <td className="px-6 py-4 whitespace-nowrap text-center">
-                      <span className={`font-semibold ${metrica.tx_conv_lead >= 50 ? 'text-green-600' : 'text-yellow-600'}`}>
-                        {formatPercent(metrica.tx_conv_lead)}
-                      </span>
-                    </td>
-                    <td className="px-6 py-4 whitespace-nowrap text-center">
-                      <button
-                        onClick={() => {
-                          setEditingMetrica(metrica);
-                          setShowModal(true);
-                        }}
-                        className="text-blue-600 hover:text-blue-800 mr-3"
-                      >
-                        Editar
-                      </button>
-                      <button
-                        onClick={() => handleDelete(metrica.id)}
-                        className="text-red-600 hover:text-red-800"
-                      >
-                        Deletar
-                      </button>
-                    </td>
-                  </tr>
-                ))}
-              </tbody>
-            </table>
-          </div>
+          <EditableDataTable
+            columns={[
+              { key: 'data', label: 'Data', format: 'date', sortable: true },
+              { key: 'vendedor', label: 'Vendedor', sortable: true, bold: true },
+              { key: 'ativacoes', label: 'Ativações', sortable: true, align: 'center' },
+              { key: 'conversoes', label: 'Conversões', sortable: true, align: 'center' },
+              { key: 'tx_ativ_conv', label: 'Tx Ativ→Conv', format: 'percent', sortable: true, align: 'center' },
+              { key: 'leads_gerados', label: 'Leads', sortable: true, align: 'center', bold: true },
+              { key: 'tx_conv_lead', label: 'Tx Conv→Lead', format: 'percent', sortable: true, align: 'center' }
+            ]}
+            data={metricasFiltradas}
+            editableColumns={['vendedor', 'ativacoes', 'conversoes', 'leads_gerados']}
+            showTotal={false}
+            showActions={true}
+            onUpdate={handleInlineUpdate}
+            onDelete={handleDelete}
+          />
         )}
       </div>
       </div>

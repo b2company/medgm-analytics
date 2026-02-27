@@ -9,12 +9,15 @@ import {
 import Modal from './Modal';
 import FinanceiroForm from './FinanceiroForm';
 import DataTable from './DataTable';
+import EditableDataTable from './EditableDataTable';
+import UploadComercialModal from './UploadComercialModal';
 
 const TransacoesFinanceiras = ({ mes, ano }) => {
   const [dados, setDados] = useState(null);
   const [vendas, setVendas] = useState([]);
   const [loading, setLoading] = useState(true);
   const [showModal, setShowModal] = useState(false);
+  const [showUploadModal, setShowUploadModal] = useState(false);
   const [editingItem, setEditingItem] = useState(null);
 
   useEffect(() => {
@@ -75,6 +78,17 @@ const TransacoesFinanceiras = ({ mes, ano }) => {
     } catch (error) {
       console.error('Erro ao atualizar transação:', error);
       alert('Erro ao atualizar transação. Verifique os dados e tente novamente.');
+    }
+  };
+
+  const handleInlineUpdate = async (id, updatedRow) => {
+    try {
+      await updateFinanceiro(id, updatedRow);
+      await loadDados();
+    } catch (error) {
+      console.error('Erro ao atualizar inline:', error);
+      alert('Erro ao atualizar. Verifique os dados e tente novamente.');
+      throw error;
     }
   };
 
@@ -143,13 +157,19 @@ const TransacoesFinanceiras = ({ mes, ano }) => {
       </div>
 
       {/* Botão Nova Transação */}
-      <div className="flex justify-end">
+      <div className="flex justify-end gap-3">
         <button
           onClick={() => setShowModal(true)}
           className="bg-primary text-white px-4 py-2 rounded-lg hover:bg-blue-600 font-medium flex items-center gap-2 transition-colors"
         >
           <span className="text-xl">+</span>
           Nova Transação
+        </button>
+        <button
+          onClick={() => setShowUploadModal(true)}
+          className="bg-blue-600 text-white px-4 py-2 rounded-lg hover:bg-blue-700 transition-colors font-medium"
+        >
+          📤 Upload em Massa
         </button>
       </div>
 
@@ -185,7 +205,7 @@ const TransacoesFinanceiras = ({ mes, ano }) => {
           ⬆️ Entradas - {new Date(2000, mes - 1).toLocaleString('pt-BR', { month: 'long' }).charAt(0).toUpperCase() + new Date(2000, mes - 1).toLocaleString('pt-BR', { month: 'long' }).slice(1)} {ano}
         </h3>
         {dados?.entradas && dados.entradas.length > 0 ? (
-          <DataTable
+          <EditableDataTable
             columns={[
               { key: 'data', label: 'Data', format: 'date', sortable: true },
               { key: 'categoria', label: 'Categoria', sortable: true },
@@ -193,10 +213,11 @@ const TransacoesFinanceiras = ({ mes, ano }) => {
               { key: 'valor', label: 'Valor', format: 'currency', align: 'right', sortable: true, showTotal: true }
             ]}
             data={dados.entradas}
+            editableColumns={['categoria', 'descricao', 'valor']}
             showTotal={true}
             totalLabel="TOTAL ENTRADAS"
             showActions={true}
-            onEdit={handleEdit}
+            onUpdate={handleInlineUpdate}
             onDelete={handleDelete}
           />
         ) : (
@@ -212,7 +233,7 @@ const TransacoesFinanceiras = ({ mes, ano }) => {
           ⬇️ Saídas - {new Date(2000, mes - 1).toLocaleString('pt-BR', { month: 'long' }).charAt(0).toUpperCase() + new Date(2000, mes - 1).toLocaleString('pt-BR', { month: 'long' }).slice(1)} {ano}
         </h3>
         {dados?.saidas && dados.saidas.length > 0 ? (
-          <DataTable
+          <EditableDataTable
             columns={[
               { key: 'data', label: 'Data', format: 'date', sortable: true },
               { key: 'categoria', label: 'Categoria', sortable: true },
@@ -222,10 +243,11 @@ const TransacoesFinanceiras = ({ mes, ano }) => {
               { key: 'valor', label: 'Valor', format: 'currency', align: 'right', sortable: true, showTotal: true }
             ]}
             data={dados.saidas}
+            editableColumns={['categoria', 'tipo_custo', 'centro_custo', 'descricao', 'valor']}
             showTotal={true}
             totalLabel="TOTAL SAÍDAS"
             showActions={true}
-            onEdit={handleEdit}
+            onUpdate={handleInlineUpdate}
             onDelete={handleDelete}
           />
         ) : (
@@ -247,6 +269,18 @@ const TransacoesFinanceiras = ({ mes, ano }) => {
           onCancel={handleCloseModal}
         />
       </Modal>
+
+      {/* Modal de Upload */}
+      <UploadComercialModal
+        isOpen={showUploadModal}
+        tipo="financeiro"
+        onClose={(sucesso) => {
+          setShowUploadModal(false);
+          if (sucesso) {
+            loadDados();
+          }
+        }}
+      />
     </div>
   );
 };

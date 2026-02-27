@@ -1,7 +1,7 @@
 import React, { useState, useEffect } from 'react';
 import { useNavigate, useLocation } from 'react-router-dom';
 import NavbarModern from '../components/NavbarModern';
-import DashboardGeralModerno from './DashboardGeralModerno';
+import DashboardGeral from './DashboardGeral';
 import SocialSelling from './SocialSelling';
 import SDR from './SDR';
 import Closer from './Closer';
@@ -101,7 +101,7 @@ const Comercial = () => {
 
         {/* Conteúdo das sub-abas */}
         <div className="animate-fade-in">
-          {activeSubTab === 'geral' && <DashboardGeralModerno mes={mes} ano={ano} />}
+          {activeSubTab === 'geral' && <DashboardGeral mes={mes} ano={ano} />}
           {activeSubTab === 'ss' && <SocialSelling mes={mes} ano={ano} />}
           {activeSubTab === 'sdr' && <SDR mes={mes} ano={ano} />}
           {activeSubTab === 'closer' && <Closer mes={mes} ano={ano} />}
