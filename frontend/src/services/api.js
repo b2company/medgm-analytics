@@ -1,6 +1,8 @@
 import axios from 'axios';
 
-const API_URL = import.meta.env.VITE_API_URL || 'https://medgm-analytics-production.up.railway.app';
+// Forçando HTTPS diretamente
+const API_URL = 'https://medgm-analytics-production.up.railway.app';
+console.log('🚀 API_URL configurada:', API_URL);
 
 const api = axios.create({
   baseURL: API_URL,
