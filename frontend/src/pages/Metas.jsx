@@ -55,7 +55,10 @@ const Metas = ({ mes: mesProp, ano: anoProp }) => {
       setMetas(metasRes.metas || []);
       // Pessoas vêm do contexto, mas garantir que estejam carregadas
       if (pessoas.length === 0) {
-        fetchPessoas();
+        console.log('📥 Carregando pessoas do contexto...');
+        await fetchPessoas();
+      } else {
+        console.log(`✅ ${pessoas.length} pessoas já carregadas no contexto`);
       }
     } catch (error) {
       console.error('Erro ao carregar dados:', error);
@@ -115,6 +118,8 @@ const Metas = ({ mes: mesProp, ano: anoProp }) => {
         meta_faturamento: formData.meta_faturamento ? parseFloat(formData.meta_faturamento) : null
       };
 
+      console.log('📤 Enviando meta:', data);
+
       if (editingMeta) {
         await updateMeta(editingMeta.id, data);
       } else {
@@ -135,8 +140,11 @@ const Metas = ({ mes: mesProp, ano: anoProp }) => {
       await loadData();
       alert(editingMeta ? 'Meta atualizada!' : 'Meta criada!');
     } catch (error) {
-      console.error('Erro ao salvar meta:', error);
-      alert('Erro ao salvar meta. Verifique os dados.');
+      console.error('❌ Erro completo ao salvar meta:', error);
+      console.error('❌ Resposta da API:', error.response?.data);
+
+      const errorMsg = error.response?.data?.detail || 'Erro ao salvar meta. Verifique os dados.';
+      alert(errorMsg);
     }
   };
 
@@ -378,6 +386,11 @@ const Metas = ({ mes: mesProp, ano: anoProp }) => {
                 </option>
               ))}
             </select>
+            {pessoas.filter(p => p.ativo).length === 0 && (
+              <p className="mt-2 text-sm text-red-600">
+                ⚠️ Nenhuma pessoa ativa cadastrada. Vá em Configurações → Equipe para cadastrar.
+              </p>
+            )}
           </div>
 
           <div className="grid grid-cols-2 gap-4">
