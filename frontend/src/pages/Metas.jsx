@@ -5,20 +5,22 @@ import {
   updateMeta,
   deleteMeta,
   replicarMetas,
-  calcularRealizado,
-  getConfigPessoas
+  calcularRealizado
 } from '../services/api';
 import Modal from '../components/Modal';
 import ProgressBar from '../components/ProgressBar';
 import LineChart from '../components/LineChart';
+import { useConfig } from '../context/ConfigContext';
 
 const Metas = ({ mes: mesProp, ano: anoProp }) => {
   // Usar props do componente pai (Comercial.jsx) se fornecidas, senão usar valores padrão
   const mes = mesProp || new Date().getMonth() + 1;
   const ano = anoProp || new Date().getFullYear();
   const [metas, setMetas] = useState([]);
-  const [pessoas, setPessoas] = useState([]);
   const [loading, setLoading] = useState(false);
+
+  // Usar contexto para pessoas
+  const { pessoas, fetchPessoas } = useConfig();
   const [showModal, setShowModal] = useState(false);
   const [editingMeta, setEditingMeta] = useState(null);
   const [formData, setFormData] = useState({
@@ -49,21 +51,18 @@ const Metas = ({ mes: mesProp, ano: anoProp }) => {
   const loadData = useCallback(async () => {
     setLoading(true);
     try {
-      const [metasRes, pessoasRes] = await Promise.all([
-        getMetas(mes, ano),
-        getConfigPessoas()
-      ]);
-      console.log('🔍 DEBUG - pessoasRes:', pessoasRes);
-      console.log('🔍 DEBUG - pessoasRes.pessoas:', pessoasRes.pessoas);
+      const metasRes = await getMetas(mes, ano);
       setMetas(metasRes.metas || []);
-      setPessoas(pessoasRes.pessoas || []);
-      console.log('✅ DEBUG - pessoas state atualizado');
+      // Pessoas vêm do contexto, mas garantir que estejam carregadas
+      if (pessoas.length === 0) {
+        fetchPessoas();
+      }
     } catch (error) {
       console.error('Erro ao carregar dados:', error);
     } finally {
       setLoading(false);
     }
-  }, [mes, ano]);
+  }, [mes, ano, pessoas.length, fetchPessoas]);
 
   useEffect(() => {
     loadData();
@@ -373,7 +372,6 @@ const Metas = ({ mes: mesProp, ano: anoProp }) => {
               disabled={!!editingMeta}
             >
               <option value="">Selecione uma pessoa</option>
-              {console.log('🎯 DEBUG - Renderizando select, pessoas:', pessoas, 'filtradas:', pessoas.filter(p => p.ativo))}
               {pessoas.filter(p => p.ativo).map(p => (
                 <option key={p.id} value={p.id}>
                   {p.nome} ({p.funcao})

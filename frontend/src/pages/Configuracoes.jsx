@@ -1,18 +1,25 @@
 import React, { useState, useEffect } from 'react';
 import Modal from '../components/Modal';
+import { useConfig } from '../context/ConfigContext';
 
 const API_URL = import.meta.env.VITE_API_URL || 'http://localhost:8000';
 
 const Configuracoes = ({ activeTab = 'equipe' }) => {
   // activeTab agora vem como prop do Config.jsx
   const [activeSubTab, setActiveSubTab] = useState('social_selling');
-  const [loading, setLoading] = useState(false);
 
-  // Estado dos dados
-  const [pessoas, setPessoas] = useState([]);
-  const [produtos, setProdutos] = useState([]);
-  const [funis, setFunis] = useState([]);
-  const [resumo, setResumo] = useState(null);
+  // Usar contexto ao invés de estado local
+  const {
+    pessoas,
+    produtos,
+    funis,
+    resumo,
+    loading,
+    fetchConfig,
+    fetchPessoas,
+    fetchProdutos,
+    fetchFunis
+  } = useConfig();
 
   // Estado dos modais
   const [showPessoaModal, setShowPessoaModal] = useState(false);
@@ -21,34 +28,8 @@ const Configuracoes = ({ activeTab = 'equipe' }) => {
   const [editingItem, setEditingItem] = useState(null);
 
   useEffect(() => {
-    fetchData();
-  }, []);
-
-  const fetchData = async () => {
-    setLoading(true);
-    try {
-      const [pessoasRes, produtosRes, funisRes, resumoRes] = await Promise.all([
-        fetch(`${API_URL}/config/pessoas`),
-        fetch(`${API_URL}/config/produtos`),
-        fetch(`${API_URL}/config/funis`),
-        fetch(`${API_URL}/config/resumo`)
-      ]);
-
-      const pessoasData = await pessoasRes.json();
-      const produtosData = await produtosRes.json();
-      const funisData = await funisRes.json();
-      const resumoData = await resumoRes.json();
-
-      setPessoas(pessoasData.pessoas || []);
-      setProdutos(produtosData.produtos || []);
-      setFunis(funisData.funis || []);
-      setResumo(resumoData);
-    } catch (error) {
-      console.error('Erro ao carregar dados:', error);
-    } finally {
-      setLoading(false);
-    }
-  };
+    fetchConfig();
+  }, [fetchConfig]);
 
   const seedData = async () => {
     if (!confirm('Isso criará dados iniciais padrão. Continuar?')) return;
@@ -57,7 +38,7 @@ const Configuracoes = ({ activeTab = 'equipe' }) => {
       const response = await fetch(`${API_URL}/config/seed`, { method: 'POST' });
       const data = await response.json();
       alert(data.message);
-      fetchData();
+      fetchConfig(); // Recarregar do contexto
     } catch (error) {
       console.error('Erro:', error);
       alert('Erro ao criar dados iniciais');
@@ -87,7 +68,7 @@ const Configuracoes = ({ activeTab = 'equipe' }) => {
         alert(editingItem ? 'Pessoa atualizada!' : 'Pessoa criada!');
         setShowPessoaModal(false);
         setEditingItem(null);
-        fetchData();
+        fetchPessoas(); // Recarregar apenas pessoas do contexto
       } else {
         const error = await response.json();
         alert(`Erro: ${error.detail}`);
@@ -105,7 +86,7 @@ const Configuracoes = ({ activeTab = 'equipe' }) => {
       const response = await fetch(`${API_URL}/config/pessoas/${id}`, { method: 'DELETE' });
       if (response.ok) {
         alert('Pessoa deletada!');
-        fetchData();
+        fetchPessoas(); // Recarregar apenas pessoas do contexto
       }
     } catch (error) {
       console.error('Erro:', error);
@@ -130,7 +111,7 @@ const Configuracoes = ({ activeTab = 'equipe' }) => {
         alert(editingItem ? 'Produto atualizado!' : 'Produto criado!');
         setShowProdutoModal(false);
         setEditingItem(null);
-        fetchData();
+        fetchProdutos(); // Recarregar apenas produtos do contexto
       } else {
         const error = await response.json();
         alert(`Erro: ${error.detail}`);
@@ -148,7 +129,7 @@ const Configuracoes = ({ activeTab = 'equipe' }) => {
       const response = await fetch(`${API_URL}/config/produtos/${id}`, { method: 'DELETE' });
       if (response.ok) {
         alert('Produto deletado!');
-        fetchData();
+        fetchProdutos(); // Recarregar apenas produtos do contexto
       }
     } catch (error) {
       console.error('Erro:', error);
@@ -173,7 +154,7 @@ const Configuracoes = ({ activeTab = 'equipe' }) => {
         alert(editingItem ? 'Funil atualizado!' : 'Funil criado!');
         setShowFunilModal(false);
         setEditingItem(null);
-        fetchData();
+        fetchFunis(); // Recarregar apenas funis do contexto
       } else {
         const error = await response.json();
         alert(`Erro: ${error.detail}`);
@@ -191,7 +172,7 @@ const Configuracoes = ({ activeTab = 'equipe' }) => {
       const response = await fetch(`${API_URL}/config/funis/${id}`, { method: 'DELETE' });
       if (response.ok) {
         alert('Funil deletado!');
-        fetchData();
+        fetchFunis(); // Recarregar apenas funis do contexto
       }
     } catch (error) {
       console.error('Erro:', error);

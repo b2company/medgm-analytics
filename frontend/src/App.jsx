@@ -1,6 +1,7 @@
 import React, { Suspense, lazy } from 'react';
 import { BrowserRouter as Router, Routes, Route, Navigate } from 'react-router-dom';
 import SidebarModern from './components/SidebarModern';
+import { ConfigProvider } from './context/ConfigContext';
 
 // Lazy loading de páginas principais
 const Comercial = lazy(() => import('./pages/Comercial'));
@@ -36,9 +37,10 @@ const LoadingFallback = () => (
 
 function App() {
   return (
-    <Router>
-      <Suspense fallback={<LoadingFallback />}>
-        <Routes>
+    <ConfigProvider>
+      <Router>
+        <Suspense fallback={<LoadingFallback />}>
+          <Routes>
           {/* Rotas públicas (sem sidebar) */}
           <Route path="/form/social-selling" element={<SocialSellingFormPublic />} />
           <Route path="/form/sdr" element={<SDRFormPublic />} />
@@ -85,6 +87,7 @@ function App() {
         </Routes>
       </Suspense>
     </Router>
+    </ConfigProvider>
   );
 }
 
