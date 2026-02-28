@@ -1,14 +1,16 @@
 import axios from 'axios';
 
-// Forçando HTTPS diretamente - SEMPRE HTTPS!
-let API_URL = 'https://medgm-analytics-production.up.railway.app';
+// Usar variável de ambiente ou fallback HTTPS
+let API_URL = import.meta.env.VITE_API_URL || 'https://medgm-analytics-production.up.railway.app';
 
-// Garantir que sempre use HTTPS
+// GARANTIR que sempre use HTTPS (proteção extra)
 if (API_URL.startsWith('http://')) {
+  console.warn('⚠️ API_URL estava com HTTP, convertendo para HTTPS');
   API_URL = API_URL.replace('http://', 'https://');
 }
 
 console.log('🚀 API_URL configurada:', API_URL);
+console.log('🔒 Protocolo:', API_URL.split('://')[0]);
 
 const api = axios.create({
   baseURL: API_URL,
@@ -20,15 +22,42 @@ const api = axios.create({
 
 // Interceptor para garantir HTTPS em todas as requisições
 api.interceptors.request.use((config) => {
+  // Forçar HTTPS no baseURL
   if (config.baseURL && config.baseURL.startsWith('http://')) {
     config.baseURL = config.baseURL.replace('http://', 'https://');
   }
+
+  // Forçar HTTPS na URL
   if (config.url && config.url.startsWith('http://')) {
     config.url = config.url.replace('http://', 'https://');
   }
-  console.log('📡 Requisição para:', config.baseURL + config.url);
+
+  // Log detalhado
+  const fullUrl = axios.getUri(config);
+  console.log('📡 Requisição completa para:', fullUrl);
+  console.log('📋 Config:', { baseURL: config.baseURL, url: config.url, params: config.params });
+
+  // Garantir que a URL final seja HTTPS
+  if (fullUrl && fullUrl.startsWith('http://')) {
+    console.warn('⚠️ URL com HTTP detectada, forçando HTTPS');
+    config.baseURL = config.baseURL.replace('http://', 'https://');
+  }
+
   return config;
 });
+
+// Interceptor de resposta para debug
+api.interceptors.response.use(
+  (response) => {
+    console.log('✅ Resposta recebida de:', response.config.url);
+    return response;
+  },
+  (error) => {
+    console.error('❌ Erro na requisição:', error.config?.url);
+    console.error('❌ Erro detalhes:', error.message);
+    return Promise.reject(error);
+  }
+);
 
 // ==================== METRICS ====================
 
