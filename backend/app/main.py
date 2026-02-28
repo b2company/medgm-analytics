@@ -17,7 +17,8 @@ load_dotenv()
 app = FastAPI(
     title="MedGM Analytics API",
     description="Backend API for MedGM Analytics Platform - Sistema completo de gestao financeira e comercial",
-    version="2.0.0"
+    version="2.0.0",
+    redirect_slashes=False  # Desabilita redirects automáticos que causam HTTPS→HTTP
 )
 
 # Configure CORS for frontend
