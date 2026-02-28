@@ -1,7 +1,13 @@
 import axios from 'axios';
 
-// Forçando HTTPS diretamente
-const API_URL = 'https://medgm-analytics-production.up.railway.app';
+// Forçando HTTPS diretamente - SEMPRE HTTPS!
+let API_URL = 'https://medgm-analytics-production.up.railway.app';
+
+// Garantir que sempre use HTTPS
+if (API_URL.startsWith('http://')) {
+  API_URL = API_URL.replace('http://', 'https://');
+}
+
 console.log('🚀 API_URL configurada:', API_URL);
 
 const api = axios.create({
@@ -10,6 +16,18 @@ const api = axios.create({
   headers: {
     'Content-Type': 'application/json',
   },
+});
+
+// Interceptor para garantir HTTPS em todas as requisições
+api.interceptors.request.use((config) => {
+  if (config.baseURL && config.baseURL.startsWith('http://')) {
+    config.baseURL = config.baseURL.replace('http://', 'https://');
+  }
+  if (config.url && config.url.startsWith('http://')) {
+    config.url = config.url.replace('http://', 'https://');
+  }
+  console.log('📡 Requisição para:', config.baseURL + config.url);
+  return config;
 });
 
 // ==================== METRICS ====================
