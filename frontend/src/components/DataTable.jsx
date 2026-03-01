@@ -1,5 +1,24 @@
 import React, { useState } from 'react';
+import { ArrowUpDown, ChevronUp, ChevronDown, Edit2, Trash2, ChevronLeft, ChevronRight } from 'lucide-react';
+import Button from './Button';
+import Checkbox from './Checkbox';
 
+/**
+ * DataTable - Tabela premium MedGM 2026
+ * Com sort, paginação, ações, totais, SELEÇÃO EM MASSA
+ *
+ * @param {Array} columns - Colunas: [{ key, label, format, sortable, showTotal, align, bold, render }]
+ * @param {Array} data - Dados da tabela
+ * @param {boolean} showTotal - Mostrar linha de total
+ * @param {string} totalLabel - Label da linha de total
+ * @param {function} onEdit - Callback de edição
+ * @param {function} onDelete - Callback de deleção
+ * @param {function} onBulkDelete - Callback de deleção em massa
+ * @param {boolean} showActions - Mostrar coluna de ações
+ * @param {boolean} enableBulkSelect - Habilitar seleção em massa
+ * @param {number} itemsPerPage - Items por página (null = sem paginação)
+ * @param {string} rowKeyField - Campo usado como ID único (default: 'id')
+ */
 const DataTable = ({
   columns,
   data,
@@ -7,11 +26,15 @@ const DataTable = ({
   totalLabel = 'TOTAL',
   onEdit = null,
   onDelete = null,
+  onBulkDelete = null,
   showActions = false,
-  itemsPerPage = null
+  enableBulkSelect = false,
+  itemsPerPage = null,
+  rowKeyField = 'id'
 }) => {
   const [sortConfig, setSortConfig] = useState({ key: null, direction: 'asc' });
   const [currentPage, setCurrentPage] = useState(1);
+  const [selectedRows, setSelectedRows] = useState(new Set());
 
   const handleSort = (key) => {
     let direction = 'asc';
@@ -47,6 +70,39 @@ const DataTable = ({
     setCurrentPage(Math.max(1, Math.min(newPage, totalPages)));
   };
 
+  // Seleção em massa
+  const handleSelectAll = (checked) => {
+    if (checked) {
+      const allIds = new Set(paginatedData.map(row => row[rowKeyField]));
+      setSelectedRows(allIds);
+    } else {
+      setSelectedRows(new Set());
+    }
+  };
+
+  const handleSelectRow = (rowId, checked) => {
+    const newSelected = new Set(selectedRows);
+    if (checked) {
+      newSelected.add(rowId);
+    } else {
+      newSelected.delete(rowId);
+    }
+    setSelectedRows(newSelected);
+  };
+
+  const handleBulkDelete = () => {
+    if (selectedRows.size === 0) return;
+
+    const selectedData = data.filter(row => selectedRows.has(row[rowKeyField]));
+    if (onBulkDelete) {
+      onBulkDelete(selectedData);
+      setSelectedRows(new Set());
+    }
+  };
+
+  const allSelected = paginatedData.length > 0 && paginatedData.every(row => selectedRows.has(row[rowKeyField]));
+  const someSelected = paginatedData.some(row => selectedRows.has(row[rowKeyField])) && !allSelected;
+
   const formatValue = (value, column) => {
     if (column.format === 'currency') {
       return new Intl.NumberFormat('pt-BR', {
@@ -79,197 +135,243 @@ const DataTable = ({
 
   const getSortIcon = (columnKey) => {
     if (sortConfig.key !== columnKey) {
-      return (
-        <svg className="w-4 h-4 ml-1 opacity-30" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-          <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M7 16V4m0 0L3 8m4-4l4 4m6 0v12m0 0l4-4m-4 4l-4-4" />
-        </svg>
-      );
+      return <ArrowUpDown className="w-4 h-4 ml-1 opacity-30" />;
     }
-    return sortConfig.direction === 'asc' ? (
-      <svg className="w-4 h-4 ml-1" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-        <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M5 15l7-7 7 7" />
-      </svg>
-    ) : (
-      <svg className="w-4 h-4 ml-1" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-        <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M19 9l-7 7-7-7" />
-      </svg>
-    );
+    return sortConfig.direction === 'asc'
+      ? <ChevronUp className="w-4 h-4 ml-1 text-medgm-gold" />
+      : <ChevronDown className="w-4 h-4 ml-1 text-medgm-gold" />;
   };
 
   return (
-    <div className="overflow-x-auto -mx-4 sm:mx-0 shadow-sm border border-gray-200 rounded-lg">
-      <div className="max-h-[600px] overflow-y-auto">
-        <table className="min-w-full divide-y divide-gray-200">
-          <thead className="bg-gray-50 sticky top-0 z-10 shadow-sm">
-            <tr>
-              {columns.map((column, idx) => (
-                <th
-                  key={idx}
-                  onClick={() => column.sortable !== false && handleSort(column.key)}
-                  className={`px-4 sm:px-6 py-3 text-left text-xs font-medium text-gray-700 uppercase tracking-wider min-w-[44px] ${
-                    column.sortable !== false ? 'cursor-pointer hover:bg-gray-100 select-none transition-colors' : ''
-                  }`}
-                >
-                  <div className="flex items-center gap-1">
-                    {column.label}
-                    {column.sortable !== false && getSortIcon(column.key)}
-                  </div>
-                </th>
-              ))}
-              {showActions && (
-                <th className="px-4 sm:px-6 py-3 text-right text-xs font-medium text-gray-700 uppercase tracking-wider sticky right-0 bg-gray-50">
-                  Ações
-                </th>
-              )}
-            </tr>
-          </thead>
-          <tbody className="bg-white divide-y divide-gray-200">
-            {paginatedData.map((row, rowIdx) => (
-              <tr key={rowIdx} className={`${rowIdx % 2 === 0 ? 'bg-white' : 'bg-gray-50'} hover:bg-blue-50 transition-colors`}>
-                {columns.map((column, colIdx) => (
-                  <td
-                    key={colIdx}
-                    className={`px-4 sm:px-6 py-4 text-sm ${
-                      column.align === 'right' ? 'text-right' :
-                      column.align === 'center' ? 'text-center' :
-                      'text-left'
-                    } ${column.bold ? 'font-semibold text-gray-900' : 'text-gray-700'}`}
-                  >
-                    <div className="break-words max-w-xs">
-                      {column.render ? column.render(row[column.key], row) : formatValue(row[column.key], column)}
-                    </div>
-                  </td>
-                ))}
-                {showActions && (
-                  <td className="px-4 sm:px-6 py-4 text-right text-sm font-medium sticky right-0 bg-inherit">
-                    <div className="flex justify-end gap-2">
-                      {onEdit && (
-                        <button
-                          onClick={() => onEdit(row)}
-                          className="text-blue-600 hover:text-blue-800 font-medium transition-colors min-h-[44px] min-w-[44px] flex items-center justify-center"
-                          aria-label="Editar registro"
-                        >
-                          Editar
-                        </button>
-                      )}
-                      {onDelete && (
-                        <button
-                          onClick={() => onDelete(row)}
-                          className="text-red-600 hover:text-red-800 font-medium transition-colors min-h-[44px] min-w-[44px] flex items-center justify-center"
-                          aria-label="Deletar registro"
-                        >
-                          Deletar
-                        </button>
-                      )}
-                    </div>
-                  </td>
-                )}
-              </tr>
-            ))}
-            {showTotal && (
-              <tr className="bg-gray-100 font-bold sticky bottom-0 shadow-md">
-                {columns.map((column, idx) => (
-                  <td
-                    key={idx}
-                    className={`px-4 sm:px-6 py-4 text-sm ${
-                      column.align === 'right' ? 'text-right' :
-                      column.align === 'center' ? 'text-center' :
-                      'text-left'
-                    } text-gray-900`}
-                  >
-                    {idx === 0 ? totalLabel : calculateTotal(column.key, column)}
-                  </td>
-                ))}
-                {showActions && <td className="sticky right-0 bg-gray-100"></td>}
-              </tr>
-            )}
-          </tbody>
-        </table>
-      </div>
-
-      {/* Paginação */}
-      {itemsPerPage && totalPages > 1 && (
-        <div className="bg-white px-4 py-3 flex items-center justify-between border-t border-gray-200 sm:px-6">
-          <div className="flex-1 flex justify-between sm:hidden">
-            <button
-              onClick={() => handlePageChange(currentPage - 1)}
-              disabled={currentPage === 1}
-              className="relative inline-flex items-center px-4 py-2 border border-gray-300 text-sm font-medium rounded-md text-gray-700 bg-white hover:bg-gray-50 disabled:opacity-50 disabled:cursor-not-allowed"
-            >
-              Anterior
-            </button>
-            <button
-              onClick={() => handlePageChange(currentPage + 1)}
-              disabled={currentPage === totalPages}
-              className="ml-3 relative inline-flex items-center px-4 py-2 border border-gray-300 text-sm font-medium rounded-md text-gray-700 bg-white hover:bg-gray-50 disabled:opacity-50 disabled:cursor-not-allowed"
-            >
-              Próximo
-            </button>
-          </div>
-          <div className="hidden sm:flex-1 sm:flex sm:items-center sm:justify-between">
-            <div>
-              <p className="text-sm text-gray-700">
-                Mostrando <span className="font-medium">{(currentPage - 1) * itemsPerPage + 1}</span> até{' '}
-                <span className="font-medium">{Math.min(currentPage * itemsPerPage, sortedData.length)}</span> de{' '}
-                <span className="font-medium">{sortedData.length}</span> resultados
-              </p>
-            </div>
-            <div>
-              <nav className="relative z-0 inline-flex rounded-md shadow-sm -space-x-px" aria-label="Pagination">
-                <button
-                  onClick={() => handlePageChange(currentPage - 1)}
-                  disabled={currentPage === 1}
-                  className="relative inline-flex items-center px-2 py-2 rounded-l-md border border-gray-300 bg-white text-sm font-medium text-gray-500 hover:bg-gray-50 disabled:opacity-50 disabled:cursor-not-allowed"
-                >
-                  <span className="sr-only">Anterior</span>
-                  <svg className="h-5 w-5" fill="currentColor" viewBox="0 0 20 20">
-                    <path fillRule="evenodd" d="M12.707 5.293a1 1 0 010 1.414L9.414 10l3.293 3.293a1 1 0 01-1.414 1.414l-4-4a1 1 0 010-1.414l4-4a1 1 0 011.414 0z" clipRule="evenodd" />
-                  </svg>
-                </button>
-
-                {/* Números de página */}
-                {Array.from({ length: Math.min(5, totalPages) }, (_, i) => {
-                  let pageNum;
-                  if (totalPages <= 5) {
-                    pageNum = i + 1;
-                  } else if (currentPage <= 3) {
-                    pageNum = i + 1;
-                  } else if (currentPage >= totalPages - 2) {
-                    pageNum = totalPages - 4 + i;
-                  } else {
-                    pageNum = currentPage - 2 + i;
-                  }
-
-                  return (
-                    <button
-                      key={pageNum}
-                      onClick={() => handlePageChange(pageNum)}
-                      className={`relative inline-flex items-center px-4 py-2 border text-sm font-medium ${
-                        currentPage === pageNum
-                          ? 'z-10 bg-primary border-primary text-white'
-                          : 'bg-white border-gray-300 text-gray-500 hover:bg-gray-50'
-                      }`}
-                    >
-                      {pageNum}
-                    </button>
-                  );
-                })}
-
-                <button
-                  onClick={() => handlePageChange(currentPage + 1)}
-                  disabled={currentPage === totalPages}
-                  className="relative inline-flex items-center px-2 py-2 rounded-r-md border border-gray-300 bg-white text-sm font-medium text-gray-500 hover:bg-gray-50 disabled:opacity-50 disabled:cursor-not-allowed"
-                >
-                  <span className="sr-only">Próximo</span>
-                  <svg className="h-5 w-5" fill="currentColor" viewBox="0 0 20 20">
-                    <path fillRule="evenodd" d="M7.293 14.707a1 1 0 010-1.414L10.586 10 7.293 6.707a1 1 0 011.414-1.414l4 4a1 1 0 010 1.414l-4 4a1 1 0 01-1.414 0z" clipRule="evenodd" />
-                  </svg>
-                </button>
-              </nav>
-            </div>
-          </div>
+    <div>
+      {/* Toolbar de ações em massa */}
+      {enableBulkSelect && selectedRows.size > 0 && (
+        <div className="mb-4 p-4 bg-medgm-gold/10 border border-medgm-gold/30 rounded-lg flex items-center justify-between animate-fade-in">
+          <p className="text-sm font-medium text-medgm-black">
+            {selectedRows.size} {selectedRows.size === 1 ? 'item selecionado' : 'itens selecionados'}
+          </p>
+          <Button
+            variant="danger"
+            size="sm"
+            onClick={handleBulkDelete}
+            leftIcon={Trash2}
+          >
+            Deletar selecionados
+          </Button>
         </div>
       )}
+
+      <div className="overflow-x-auto -mx-4 sm:mx-0 shadow-card border border-medgm-gray-200 rounded-xl">
+        <div className="max-h-[600px] overflow-y-auto scrollbar-medgm">
+          <table className="table-medgm">
+            {/* Header */}
+            <thead className="sticky top-0 z-10 shadow-sm bg-medgm-gray-50">
+              <tr>
+                {/* Checkbox Select All */}
+                {enableBulkSelect && (
+                  <th className="w-12">
+                    <Checkbox
+                      checked={allSelected}
+                      onChange={(e) => handleSelectAll(e.target.checked)}
+                      className="flex items-center justify-center"
+                    />
+                  </th>
+                )}
+
+                {columns.map((column, idx) => (
+                  <th
+                    key={idx}
+                    onClick={() => column.sortable !== false && handleSort(column.key)}
+                    className={`${
+                      column.sortable !== false ? 'cursor-pointer hover:bg-medgm-gray-100 select-none transition-colors' : ''
+                    }`}
+                  >
+                    <div className="flex items-center gap-1">
+                      {column.label}
+                      {column.sortable !== false && getSortIcon(column.key)}
+                    </div>
+                  </th>
+                ))}
+                {showActions && (
+                  <th className="sticky right-0 bg-medgm-gray-50 text-right">
+                    Ações
+                  </th>
+                )}
+              </tr>
+            </thead>
+
+            {/* Body */}
+            <tbody>
+              {paginatedData.map((row, rowIdx) => {
+                const rowId = row[rowKeyField];
+                const isSelected = selectedRows.has(rowId);
+
+                return (
+                  <tr
+                    key={rowIdx}
+                    className={isSelected ? 'bg-medgm-gold/5' : ''}
+                  >
+                    {/* Checkbox de seleção */}
+                    {enableBulkSelect && (
+                      <td>
+                        <Checkbox
+                          checked={isSelected}
+                          onChange={(e) => handleSelectRow(rowId, e.target.checked)}
+                          className="flex items-center justify-center"
+                        />
+                      </td>
+                    )}
+
+                    {columns.map((column, colIdx) => (
+                      <td
+                        key={colIdx}
+                        className={`${
+                          column.align === 'right' ? 'text-right' :
+                          column.align === 'center' ? 'text-center' :
+                          'text-left'
+                        } ${column.bold ? 'font-semibold text-medgm-black' : ''}`}
+                      >
+                        <div className="break-words max-w-xs">
+                          {column.render ? column.render(row[column.key], row) : formatValue(row[column.key], column)}
+                        </div>
+                      </td>
+                    ))}
+                    {showActions && (
+                      <td className="text-right sticky right-0 bg-inherit">
+                        <div className="flex justify-end gap-2">
+                          {onEdit && (
+                            <button
+                              onClick={() => onEdit(row)}
+                              className="p-2 text-medgm-gold hover:bg-medgm-gold hover:text-white rounded-lg transition-all duration-200 cursor-pointer"
+                              aria-label="Editar"
+                            >
+                              <Edit2 className="w-4 h-4" />
+                            </button>
+                          )}
+                          {onDelete && (
+                            <button
+                              onClick={() => onDelete(row)}
+                              className="p-2 text-danger hover:bg-danger hover:text-white rounded-lg transition-all duration-200 cursor-pointer"
+                              aria-label="Deletar"
+                            >
+                              <Trash2 className="w-4 h-4" />
+                            </button>
+                          )}
+                        </div>
+                      </td>
+                    )}
+                  </tr>
+                );
+              })}
+
+              {/* Total Row */}
+              {showTotal && (
+                <tr className="bg-medgm-gold/10 font-semibold sticky bottom-0 shadow-md border-t-2 border-medgm-gold">
+                  {enableBulkSelect && <td></td>}
+                  {columns.map((column, idx) => (
+                    <td
+                      key={idx}
+                      className={`${
+                        column.align === 'right' ? 'text-right' :
+                        column.align === 'center' ? 'text-center' :
+                        'text-left'
+                      } text-medgm-black`}
+                    >
+                      {idx === 0 ? totalLabel : calculateTotal(column.key, column)}
+                    </td>
+                  ))}
+                  {showActions && <td className="sticky right-0 bg-medgm-gold/10"></td>}
+                </tr>
+              )}
+            </tbody>
+          </table>
+        </div>
+
+        {/* Paginação */}
+        {itemsPerPage && totalPages > 1 && (
+          <div className="bg-white px-4 py-3 flex items-center justify-between border-t border-medgm-gray-200 sm:px-6">
+            {/* Mobile */}
+            <div className="flex-1 flex justify-between sm:hidden">
+              <Button
+                variant="ghost"
+                size="sm"
+                onClick={() => handlePageChange(currentPage - 1)}
+                disabled={currentPage === 1}
+                leftIcon={ChevronLeft}
+              >
+                Anterior
+              </Button>
+              <Button
+                variant="ghost"
+                size="sm"
+                onClick={() => handlePageChange(currentPage + 1)}
+                disabled={currentPage === totalPages}
+                rightIcon={ChevronRight}
+              >
+                Próximo
+              </Button>
+            </div>
+
+            {/* Desktop */}
+            <div className="hidden sm:flex-1 sm:flex sm:items-center sm:justify-between">
+              <div>
+                <p className="text-sm text-medgm-gray-600">
+                  Mostrando <span className="font-medium text-medgm-black">{(currentPage - 1) * itemsPerPage + 1}</span> até{' '}
+                  <span className="font-medium text-medgm-black">{Math.min(currentPage * itemsPerPage, sortedData.length)}</span> de{' '}
+                  <span className="font-medium text-medgm-black">{sortedData.length}</span> resultados
+                </p>
+              </div>
+              <div>
+                <nav className="relative z-0 inline-flex rounded-lg shadow-sm -space-x-px">
+                  <button
+                    onClick={() => handlePageChange(currentPage - 1)}
+                    disabled={currentPage === 1}
+                    className="relative inline-flex items-center px-2 py-2 rounded-l-lg border border-medgm-gray-300 bg-white text-medgm-gray-600 hover:bg-medgm-gray-50 disabled:opacity-50 disabled:cursor-not-allowed transition-colors cursor-pointer"
+                  >
+                    <ChevronLeft className="h-5 w-5" />
+                  </button>
+
+                  {/* Números de página */}
+                  {Array.from({ length: Math.min(5, totalPages) }, (_, i) => {
+                    let pageNum;
+                    if (totalPages <= 5) {
+                      pageNum = i + 1;
+                    } else if (currentPage <= 3) {
+                      pageNum = i + 1;
+                    } else if (currentPage >= totalPages - 2) {
+                      pageNum = totalPages - 4 + i;
+                    } else {
+                      pageNum = currentPage - 2 + i;
+                    }
+
+                    return (
+                      <button
+                        key={pageNum}
+                        onClick={() => handlePageChange(pageNum)}
+                        className={`relative inline-flex items-center px-4 py-2 border text-sm font-medium transition-all cursor-pointer ${
+                          currentPage === pageNum
+                            ? 'z-10 bg-medgm-gold border-medgm-gold text-white shadow-premium'
+                            : 'bg-white border-medgm-gray-300 text-medgm-gray-700 hover:bg-medgm-gray-50'
+                        }`}
+                      >
+                        {pageNum}
+                      </button>
+                    );
+                  })}
+
+                  <button
+                    onClick={() => handlePageChange(currentPage + 1)}
+                    disabled={currentPage === totalPages}
+                    className="relative inline-flex items-center px-2 py-2 rounded-r-lg border border-medgm-gray-300 bg-white text-medgm-gray-600 hover:bg-medgm-gray-50 disabled:opacity-50 disabled:cursor-not-allowed transition-colors cursor-pointer"
+                  >
+                    <ChevronRight className="h-5 w-5" />
+                  </button>
+                </nav>
+              </div>
+            </div>
+          </div>
+        )}
+      </div>
     </div>
   );
 };
