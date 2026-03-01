@@ -106,6 +106,26 @@ const TransacoesFinanceiras = ({ mes, ano }) => {
     }
   };
 
+  const handleBulkDelete = async (selectedRows) => {
+    const count = selectedRows.length;
+
+    if (!window.confirm(`Deletar ${count} ${count === 1 ? 'transação' : 'transações'}?`)) {
+      return;
+    }
+
+    try {
+      await Promise.all(
+        selectedRows.map(row => deleteFinanceiro(row.id))
+      );
+
+      await loadDados();
+      alert(`${count} ${count === 1 ? 'transação deletada' : 'transações deletadas'} com sucesso!`);
+    } catch (error) {
+      console.error('Erro ao deletar transações:', error);
+      alert('Erro ao deletar transações. Tente novamente.');
+    }
+  };
+
   const handleCloseModal = () => {
     setShowModal(false);
     setEditingItem(null);
@@ -219,6 +239,9 @@ const TransacoesFinanceiras = ({ mes, ano }) => {
             showActions={true}
             onUpdate={handleInlineUpdate}
             onDelete={handleDelete}
+            enableBulkSelect={true}
+            onBulkDelete={handleBulkDelete}
+            rowKeyField="id"
           />
         ) : (
           <div className="text-center py-8 text-gray-500">
@@ -249,6 +272,9 @@ const TransacoesFinanceiras = ({ mes, ano }) => {
             showActions={true}
             onUpdate={handleInlineUpdate}
             onDelete={handleDelete}
+            enableBulkSelect={true}
+            onBulkDelete={handleBulkDelete}
+            rowKeyField="id"
           />
         ) : (
           <div className="text-center py-8 text-gray-500">

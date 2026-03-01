@@ -1,5 +1,23 @@
 import React, { useState, useRef, useEffect } from 'react';
+import { ArrowUpDown, ChevronUp, ChevronDown, Trash2, Edit2 } from 'lucide-react';
+import Button from './Button';
+import Checkbox from './Checkbox';
 
+/**
+ * EditableDataTable - Tabela premium MedGM 2026 com edição inline e bulk delete
+ *
+ * @param {Array} columns - Colunas: [{ key, label, format, sortable, showTotal, align, bold, render }]
+ * @param {Array} data - Dados da tabela
+ * @param {boolean} showTotal - Mostrar linha de total
+ * @param {string} totalLabel - Label da linha de total
+ * @param {function} onUpdate - Callback de atualização (id, updatedData)
+ * @param {function} onDelete - Callback de deleção individual
+ * @param {function} onBulkDelete - Callback de deleção em massa
+ * @param {boolean} showActions - Mostrar coluna de ações
+ * @param {boolean} enableBulkSelect - Habilitar seleção em massa
+ * @param {Array} editableColumns - Array de column keys que podem ser editados
+ * @param {string} rowKeyField - Campo usado como ID único (default: 'id')
+ */
 const EditableDataTable = ({
   columns,
   data,
@@ -7,16 +25,16 @@ const EditableDataTable = ({
   totalLabel = 'TOTAL',
   onUpdate = null,
   onDelete = null,
+  onBulkDelete = null,
   showActions = false,
-  editableColumns = [], // Array de column keys que podem ser editados
-  selectable = false, // Habilitar seleção múltipla
-  selectedRows = [], // Array de IDs selecionados
-  onToggleSelect = null, // Função para toggle de linha individual
-  onToggleSelectAll = null // Função para toggle de todas as linhas
+  enableBulkSelect = false,
+  editableColumns = [],
+  rowKeyField = 'id'
 }) => {
   const [sortConfig, setSortConfig] = useState({ key: null, direction: 'asc' });
   const [editingCell, setEditingCell] = useState(null); // { rowIndex, columnKey }
   const [editValue, setEditValue] = useState('');
+  const [selectedRows, setSelectedRows] = useState(new Set());
   const inputRef = useRef(null);
 
   useEffect(() => {
@@ -91,6 +109,39 @@ const EditableDataTable = ({
     handleSave();
   };
 
+  // Seleção em massa
+  const handleSelectAll = (checked) => {
+    if (checked) {
+      const allIds = new Set(sortedData.map(row => row[rowKeyField]));
+      setSelectedRows(allIds);
+    } else {
+      setSelectedRows(new Set());
+    }
+  };
+
+  const handleSelectRow = (rowId, checked) => {
+    const newSelected = new Set(selectedRows);
+    if (checked) {
+      newSelected.add(rowId);
+    } else {
+      newSelected.delete(rowId);
+    }
+    setSelectedRows(newSelected);
+  };
+
+  const handleBulkDelete = () => {
+    if (selectedRows.size === 0) return;
+
+    const selectedData = data.filter(row => selectedRows.has(row[rowKeyField]));
+    if (onBulkDelete) {
+      onBulkDelete(selectedData);
+      setSelectedRows(new Set());
+    }
+  };
+
+  const allSelected = sortedData.length > 0 && sortedData.every(row => selectedRows.has(row[rowKeyField]));
+  const someSelected = sortedData.some(row => selectedRows.has(row[rowKeyField])) && !allSelected;
+
   const formatValue = (value, column) => {
     if (column.format === 'currency') {
       return new Intl.NumberFormat('pt-BR', {
@@ -123,21 +174,11 @@ const EditableDataTable = ({
 
   const getSortIcon = (columnKey) => {
     if (sortConfig.key !== columnKey) {
-      return (
-        <svg className="w-4 h-4 ml-1 opacity-30" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-          <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M7 16V4m0 0L3 8m4-4l4 4m6 0v12m0 0l4-4m-4 4l-4-4" />
-        </svg>
-      );
+      return <ArrowUpDown className="w-4 h-4 ml-1 opacity-30" />;
     }
-    return sortConfig.direction === 'asc' ? (
-      <svg className="w-4 h-4 ml-1" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-        <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M5 15l7-7 7 7" />
-      </svg>
-    ) : (
-      <svg className="w-4 h-4 ml-1" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-        <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M19 9l-7 7-7-7" />
-      </svg>
-    );
+    return sortConfig.direction === 'asc'
+      ? <ChevronUp className="w-4 h-4 ml-1 text-medgm-gold" />
+      : <ChevronDown className="w-4 h-4 ml-1 text-medgm-gold" />;
   };
 
   const isEditing = (rowIndex, columnKey) => {
@@ -149,119 +190,147 @@ const EditableDataTable = ({
   };
 
   return (
-    <div className="overflow-x-auto -mx-4 sm:mx-0 shadow-sm border border-gray-200 rounded-lg">
-      <div className="max-h-[600px] overflow-y-auto">
-        <table className="min-w-full divide-y divide-gray-200">
-          <thead className="bg-gray-50 sticky top-0 z-10 shadow-sm">
-            <tr>
-              {selectable && (
-                <th className="px-4 py-3 w-12 bg-gray-50">
-                  <input
-                    type="checkbox"
-                    checked={selectedRows.length > 0 && selectedRows.length === data.length}
-                    onChange={onToggleSelectAll}
-                    className="w-4 h-4 text-blue-600 rounded border-gray-300 focus:ring-blue-500 cursor-pointer"
-                  />
-                </th>
-              )}
-              {columns.map((column, idx) => (
-                <th
-                  key={idx}
-                  onClick={() => column.sortable !== false && handleSort(column.key)}
-                  className={`px-4 sm:px-6 py-3 text-left text-xs font-medium text-gray-700 uppercase tracking-wider min-w-[44px] ${
-                    column.sortable !== false ? 'cursor-pointer hover:bg-gray-100 select-none transition-colors' : ''
-                  }`}
-                >
-                  <div className="flex items-center gap-1">
-                    {column.label}
-                    {isEditable(column.key) && <span className="text-blue-500 text-xs">✏️</span>}
-                    {column.sortable !== false && getSortIcon(column.key)}
-                  </div>
-                </th>
-              ))}
-              {showActions && (
-                <th className="px-4 sm:px-6 py-3 text-right text-xs font-medium text-gray-700 uppercase tracking-wider sticky right-0 bg-gray-50">
-                  Ações
-                </th>
-              )}
-            </tr>
-          </thead>
-          <tbody className="bg-white divide-y divide-gray-200">
-            {sortedData.map((row, rowIdx) => (
-              <tr key={rowIdx} className={`${rowIdx % 2 === 0 ? 'bg-white' : 'bg-gray-50'} hover:bg-blue-50 transition-colors`}>
-                {selectable && (
-                  <td className="px-4 py-4 w-12">
-                    <input
-                      type="checkbox"
-                      checked={selectedRows.includes(row.id)}
-                      onChange={() => onToggleSelect(row.id)}
-                      onClick={(e) => e.stopPropagation()}
-                      className="w-4 h-4 text-blue-600 rounded border-gray-300 focus:ring-blue-500 cursor-pointer"
+    <div>
+      {/* Toolbar de ações em massa */}
+      {enableBulkSelect && selectedRows.size > 0 && (
+        <div className="mb-4 p-4 bg-medgm-gold/10 border border-medgm-gold/30 rounded-lg flex items-center justify-between animate-fade-in">
+          <p className="text-sm font-medium text-medgm-black">
+            {selectedRows.size} {selectedRows.size === 1 ? 'item selecionado' : 'itens selecionados'}
+          </p>
+          <Button
+            variant="danger"
+            size="sm"
+            onClick={handleBulkDelete}
+            leftIcon={Trash2}
+          >
+            Deletar selecionados
+          </Button>
+        </div>
+      )}
+
+      <div className="overflow-x-auto -mx-4 sm:mx-0 shadow-card border border-medgm-gray-200 rounded-xl">
+        <div className="max-h-[600px] overflow-y-auto scrollbar-medgm">
+          <table className="table-medgm">
+            {/* Header */}
+            <thead className="sticky top-0 z-10 shadow-sm bg-medgm-gray-50">
+              <tr>
+                {/* Checkbox Select All */}
+                {enableBulkSelect && (
+                  <th className="w-12">
+                    <Checkbox
+                      checked={allSelected}
+                      onChange={(e) => handleSelectAll(e.target.checked)}
+                      className="flex items-center justify-center"
                     />
-                  </td>
+                  </th>
                 )}
-                {columns.map((column, colIdx) => (
-                  <td
-                    key={colIdx}
-                    onClick={() => handleCellClick(row, rowIdx, column.key)}
-                    className={`px-4 sm:px-6 py-4 text-sm ${
-                      column.align === 'right' ? 'text-right' :
-                      column.align === 'center' ? 'text-center' :
-                      'text-left'
-                    } ${column.bold ? 'font-semibold text-gray-900' : 'text-gray-700'} ${
-                      isEditable(column.key) ? 'cursor-pointer hover:bg-yellow-50' : ''
-                    } ${isEditing(rowIdx, column.key) ? 'bg-blue-100' : ''}`}
+                {columns.map((column, idx) => (
+                  <th
+                    key={idx}
+                    onClick={() => column.sortable !== false && handleSort(column.key)}
+                    className={`${
+                      column.sortable !== false ? 'cursor-pointer hover:bg-medgm-gray-100 select-none transition-colors' : ''
+                    }`}
                   >
-                    {isEditing(rowIdx, column.key) ? (
-                      <input
-                        ref={inputRef}
-                        type={column.format === 'currency' || column.format === 'number' ? 'number' : 'text'}
-                        value={editValue}
-                        onChange={(e) => setEditValue(e.target.value)}
-                        onKeyDown={handleKeyDown}
-                        onBlur={handleBlur}
-                        className="w-full px-2 py-1 border border-blue-500 rounded focus:outline-none focus:ring-2 focus:ring-blue-500"
-                      />
-                    ) : (
-                      <div className="break-words max-w-xs">
-                        {column.render ? column.render(row[column.key], row) : formatValue(row[column.key], column)}
-                      </div>
-                    )}
-                  </td>
+                    <div className="flex items-center gap-1">
+                      {column.label}
+                      {isEditable(column.key) && <Edit2 className="w-3 h-3 text-medgm-gold" />}
+                      {column.sortable !== false && getSortIcon(column.key)}
+                    </div>
+                  </th>
                 ))}
                 {showActions && (
-                  <td className="px-4 sm:px-6 py-4 text-right text-sm font-medium sticky right-0 bg-inherit">
-                    <div className="flex justify-end gap-2">
-                      {onDelete && (
-                        <button
-                          onClick={() => onDelete(row)}
-                          className="text-red-600 hover:text-red-800 font-medium transition-colors min-h-[44px] min-w-[44px] flex items-center justify-center"
-                          aria-label="Deletar registro"
-                        >
-                          Deletar
-                        </button>
-                      )}
-                    </div>
-                  </td>
+                  <th className="sticky right-0 bg-medgm-gray-50 text-right">
+                    Ações
+                  </th>
                 )}
               </tr>
-            ))}
+            </thead>
+          {/* Body */}
+          <tbody>
+            {sortedData.map((row, rowIdx) => {
+              const rowId = row[rowKeyField];
+              const isSelected = selectedRows.has(rowId);
+
+              return (
+                <tr
+                  key={rowIdx}
+                  className={isSelected ? 'bg-medgm-gold/5' : ''}
+                >
+                  {/* Checkbox de seleção */}
+                  {enableBulkSelect && (
+                    <td>
+                      <Checkbox
+                        checked={isSelected}
+                        onChange={(e) => handleSelectRow(rowId, e.target.checked)}
+                        className="flex items-center justify-center"
+                      />
+                    </td>
+                  )}
+                  {columns.map((column, colIdx) => (
+                    <td
+                      key={colIdx}
+                      onClick={() => handleCellClick(row, rowIdx, column.key)}
+                      className={`${
+                        column.align === 'right' ? 'text-right' :
+                        column.align === 'center' ? 'text-center' :
+                        'text-left'
+                      } ${column.bold ? 'font-semibold text-medgm-black' : ''} ${
+                        isEditable(column.key) ? 'cursor-pointer hover:bg-medgm-gold/10 transition-colors' : ''
+                      } ${isEditing(rowIdx, column.key) ? 'bg-medgm-gold/20' : ''}`}
+                    >
+                      {isEditing(rowIdx, column.key) ? (
+                        <input
+                          ref={inputRef}
+                          type={column.format === 'currency' || column.format === 'number' ? 'number' : 'text'}
+                          value={editValue}
+                          onChange={(e) => setEditValue(e.target.value)}
+                          onKeyDown={handleKeyDown}
+                          onBlur={handleBlur}
+                          className="input-medgm w-full !py-1"
+                        />
+                      ) : (
+                        <div className="break-words max-w-xs">
+                          {column.render ? column.render(row[column.key], row) : formatValue(row[column.key], column)}
+                        </div>
+                      )}
+                    </td>
+                  ))}
+                  {showActions && (
+                    <td className="text-right sticky right-0 bg-inherit">
+                      <div className="flex justify-end gap-2">
+                        {onDelete && (
+                          <button
+                            onClick={() => onDelete(row)}
+                            className="p-2 text-danger hover:bg-danger hover:text-white rounded-lg transition-all duration-200 cursor-pointer"
+                            aria-label="Deletar"
+                          >
+                            <Trash2 className="w-4 h-4" />
+                          </button>
+                        )}
+                      </div>
+                    </td>
+                  )}
+                </tr>
+              );
+            })}
+            {/* Total Row */}
             {showTotal && (
-              <tr className="bg-gray-100 font-bold sticky bottom-0 shadow-md">
-                {selectable && <td className="px-4 py-4 w-12 bg-gray-100"></td>}
+              <tr className="bg-medgm-gold/10 font-semibold sticky bottom-0 shadow-md border-t-2 border-medgm-gold">
+                {enableBulkSelect && <td></td>}
                 {columns.map((column, idx) => (
                   <td
                     key={idx}
-                    className={`px-4 sm:px-6 py-4 text-sm ${
+                    className={`${
                       column.align === 'right' ? 'text-right' :
                       column.align === 'center' ? 'text-center' :
                       'text-left'
-                    } text-gray-900`}
+                    } text-medgm-black`}
                   >
                     {idx === 0 ? totalLabel : calculateTotal(column.key, column)}
                   </td>
                 ))}
-                {showActions && <td className="sticky right-0 bg-gray-100"></td>}
+                {showActions && <td className="sticky right-0 bg-medgm-gold/10"></td>}
               </tr>
             )}
           </tbody>
@@ -269,9 +338,11 @@ const EditableDataTable = ({
       </div>
 
       {/* Ajuda */}
-      <div className="bg-blue-50 px-4 py-2 text-xs text-blue-700 border-t border-blue-200">
-        💡 <strong>Dica:</strong> Clique em qualquer célula com ✏️ para editar. Pressione Enter ou Tab para salvar, ESC para cancelar.
+      <div className="bg-medgm-gold/5 px-4 py-2 text-xs text-medgm-dark border-t border-medgm-gold/20">
+        <Edit2 className="w-3 h-3 inline mr-1 text-medgm-gold" />
+        <strong>Dica:</strong> Clique em qualquer célula editável para modificar. Pressione Enter ou Tab para salvar, ESC para cancelar.
       </div>
+    </div>
     </div>
   );
 };
