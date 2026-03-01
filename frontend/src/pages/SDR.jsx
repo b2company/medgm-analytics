@@ -216,6 +216,30 @@ const SDR = ({ mes: mesProp, ano: anoProp }) => {
     }
   };
 
+  const handleBulkDelete = async (selectedRows) => {
+    const count = selectedRows.length;
+
+    if (!window.confirm(`Deletar ${count} ${count === 1 ? 'métrica' : 'métricas'}?`)) {
+      return;
+    }
+
+    try {
+      await Promise.all(
+        selectedRows.map(row =>
+          fetch(`${API_URL}/comercial/sdr/${row.id}`, {
+            method: 'DELETE'
+          })
+        )
+      );
+
+      alert(`${count} ${count === 1 ? 'métrica deletada' : 'métricas deletadas'} com sucesso!`);
+      fetchData();
+    } catch (error) {
+      console.error('Erro ao deletar métricas:', error);
+      alert('Erro ao deletar métricas. Tente novamente.');
+    }
+  };
+
   const handleInlineUpdate = async (id, updatedRow) => {
     try {
       const response = await fetch(`${API_URL}/comercial/sdr/${id}`, {
@@ -642,6 +666,9 @@ const SDR = ({ mes: mesProp, ano: anoProp }) => {
             showActions={true}
             onUpdate={handleInlineUpdate}
             onDelete={handleDelete}
+            enableBulkSelect={true}
+            onBulkDelete={handleBulkDelete}
+            rowKeyField="id"
           />
         )}
       </div>

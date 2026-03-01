@@ -17,7 +17,6 @@ const Vendas = ({ mes: mesProp, ano: anoProp }) => {
   const [showUploadModal, setShowUploadModal] = useState(false);
   const [editingVenda, setEditingVenda] = useState(null);
   const [filtros, setFiltros] = useState({ dataInicio: '', dataFim: '', closer: '', funil: '' });
-  const [selectedVendas, setSelectedVendas] = useState([]);
 
   const meses = ['Janeiro', 'Fevereiro', 'Março', 'Abril', 'Maio', 'Junho',
     'Julho', 'Agosto', 'Setembro', 'Outubro', 'Novembro', 'Dezembro'];
@@ -67,43 +66,23 @@ const Vendas = ({ mes: mesProp, ano: anoProp }) => {
     }
   };
 
-  const handleDeleteSelected = async () => {
-    if (selectedVendas.length === 0) return;
+  const handleBulkDelete = async (selectedRows) => {
+    const count = selectedRows.length;
 
-    const confirm = window.confirm(
-      `Deseja realmente deletar ${selectedVendas.length} venda(s) selecionada(s)?\n\nEsta ação não pode ser desfeita.`
-    );
+    if (!window.confirm(`Deletar ${count} ${count === 1 ? 'venda' : 'vendas'}?`)) {
+      return;
+    }
 
-    if (!confirm) return;
-
-    setLoading(true);
     try {
-      // Deletar todas as vendas selecionadas em paralelo
-      await Promise.all(selectedVendas.map(id => deleteVenda(id)));
-      setSelectedVendas([]);
-      fetchVendas();
-      alert(`${selectedVendas.length} venda(s) deletada(s) com sucesso!`);
+      await Promise.all(
+        selectedRows.map(row => deleteVenda(row.id))
+      );
+
+      await fetchVendas();
+      alert(`${count} ${count === 1 ? 'venda deletada' : 'vendas deletadas'} com sucesso!`);
     } catch (error) {
       console.error('Erro ao deletar vendas:', error);
-      alert('Erro ao deletar algumas vendas. Tente novamente.');
-    } finally {
-      setLoading(false);
-    }
-  };
-
-  const toggleSelectVenda = (id) => {
-    setSelectedVendas(prev =>
-      prev.includes(id)
-        ? prev.filter(vendaId => vendaId !== id)
-        : [...prev, id]
-    );
-  };
-
-  const toggleSelectAll = () => {
-    if (selectedVendas.length === vendasFiltradas.length) {
-      setSelectedVendas([]);
-    } else {
-      setSelectedVendas(vendasFiltradas.map(v => v.id));
+      alert('Erro ao deletar vendas. Tente novamente.');
     }
   };
 
@@ -159,29 +138,10 @@ const Vendas = ({ mes: mesProp, ano: anoProp }) => {
   return (
     <div className="max-w-7xl mx-auto py-8 px-4">
       <div className="flex justify-between items-center mb-8">
-        <div>
-          <h1 className="text-3xl font-bold text-gray-900">
-            Gestão de Vendas - {meses[mes - 1]} {ano}
-          </h1>
-          {selectedVendas.length > 0 && (
-            <p className="text-sm text-gray-600 mt-1">
-              {selectedVendas.length} venda(s) selecionada(s)
-            </p>
-          )}
-        </div>
+        <h1 className="text-3xl font-bold text-gray-900">
+          Gestão de Vendas - {meses[mes - 1]} {ano}
+        </h1>
         <div className="flex gap-3">
-          {selectedVendas.length > 0 && (
-            <button
-              onClick={handleDeleteSelected}
-              disabled={loading}
-              className="bg-red-600 text-white px-4 py-2 rounded-lg hover:bg-red-700 transition-colors disabled:opacity-50 flex items-center gap-2"
-            >
-              <svg className="w-5 h-5" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16" />
-              </svg>
-              Deletar Selecionadas ({selectedVendas.length})
-            </button>
-          )}
           <button
             onClick={() => { setEditingVenda(null); setShowModal(true); }}
             className="bg-primary text-white px-4 py-2 rounded-lg hover:bg-primary-dark"
@@ -272,10 +232,9 @@ const Vendas = ({ mes: mesProp, ano: anoProp }) => {
             showActions={true}
             onUpdate={handleInlineUpdate}
             onDelete={handleDelete}
-            selectable={true}
-            selectedRows={selectedVendas}
-            onToggleSelect={toggleSelectVenda}
-            onToggleSelectAll={toggleSelectAll}
+            enableBulkSelect={true}
+            onBulkDelete={handleBulkDelete}
+            rowKeyField="id"
           />
         )}
       </div>
