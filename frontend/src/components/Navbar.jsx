@@ -1,6 +1,11 @@
 import React, { useState } from 'react';
 import { Link, useLocation } from 'react-router-dom';
+import { Menu, X, BarChart3, Settings } from 'lucide-react';
 
+/**
+ * Navbar - Header premium com identidade visual MedGM
+ * Design System 2026: Clean, elegante, com logo MedGM
+ */
 const Navbar = () => {
   const location = useLocation();
   const [mobileMenuOpen, setMobileMenuOpen] = useState(false);
@@ -8,82 +13,100 @@ const Navbar = () => {
   const isActive = (path) => location.pathname.startsWith(path);
 
   const mainNavLinks = [
-    { path: '/comercial', label: 'Comercial' },
-    { path: '/config', label: 'Config' }
+    { path: '/comercial', label: 'Comercial', icon: BarChart3 },
+    { path: '/config', label: 'Configurações', icon: Settings }
   ];
 
   return (
-    <nav className="bg-white shadow-md border-b border-gray-100 sticky top-0 z-50">
+    <nav className="bg-white border-b border-medgm-gray-200 sticky top-0 z-50 shadow-sm">
       <div className="max-w-7xl mx-auto px-6 sm:px-8 lg:px-12">
-        <div className="flex justify-between h-20">
+        <div className="flex justify-between items-center h-20">
+          {/* Logo MedGM */}
           <div className="flex items-center">
-            <div className="flex-shrink-0 flex items-center">
-              <Link to="/comercial" className="flex items-center gap-3">
-                <div className="w-10 h-10 bg-gradient-to-br from-amber-400 to-amber-600 rounded-lg flex items-center justify-center shadow-lg">
-                  <span className="text-white font-bold text-xl">M</span>
+            <Link
+              to="/comercial"
+              className="flex items-center gap-3 group transition-all duration-200 hover:opacity-80"
+            >
+              {/* Logo Icon */}
+              <div className="relative">
+                <div className="w-11 h-11 bg-gradient-to-br from-medgm-gold to-medgm-gold/80 rounded-lg flex items-center justify-center shadow-premium group-hover:shadow-gold-glow transition-all duration-200">
+                  <span className="text-white font-bold text-xl tracking-tight">M</span>
                 </div>
-                <div>
-                  <h1 className="text-2xl font-bold tracking-tight" style={{ color: '#2B2B2B' }}>
-                    MedGM <span className="text-amber-600">Analytics</span>
-                  </h1>
-                  <p className="text-xs text-gray-500 -mt-1">Growth & Marketing</p>
-                </div>
-              </Link>
-            </div>
-            <div className="hidden sm:ml-12 sm:flex sm:space-x-2">
-              {mainNavLinks.map(link => (
+              </div>
+
+              {/* Texto Logo */}
+              <div className="hidden sm:block">
+                <h1 className="text-2xl font-bold tracking-tight text-medgm-black">
+                  MedGM <span className="text-medgm-gold">Analytics</span>
+                </h1>
+                <p className="text-xs text-medgm-gray-600 font-medium -mt-0.5">
+                  Assessoria de Growth
+                </p>
+              </div>
+            </Link>
+
+            {/* Desktop Navigation */}
+            <div className="hidden md:flex md:ml-12 md:gap-2">
+              {mainNavLinks.map(({ path, label, icon: Icon }) => (
                 <Link
-                  key={link.path}
-                  to={link.path}
-                  className={`inline-flex items-center px-4 py-2 border-b-2 text-sm font-medium transition-all ${
-                    isActive(link.path)
-                      ? 'border-amber-500 text-gray-900 bg-amber-50 rounded-t-lg'
-                      : 'border-transparent text-gray-600 hover:text-gray-900 hover:bg-gray-50 rounded-lg'
-                  }`}
+                  key={path}
+                  to={path}
+                  className={`
+                    flex items-center gap-2 px-4 py-2.5 rounded-lg font-medium text-sm
+                    transition-all duration-200 cursor-pointer
+                    ${isActive(path)
+                      ? 'bg-medgm-gold text-white shadow-premium'
+                      : 'text-medgm-dark hover:bg-medgm-gray-100 hover:text-medgm-black'
+                    }
+                  `}
                 >
-                  {link.label}
+                  <Icon className="w-4 h-4" />
+                  <span>{label}</span>
                 </Link>
               ))}
             </div>
           </div>
 
-          {/* Mobile menu button */}
-          <div className="flex items-center sm:hidden">
-            <button
-              onClick={() => setMobileMenuOpen(!mobileMenuOpen)}
-              className="inline-flex items-center justify-center p-2 rounded-lg text-gray-900 hover:text-amber-600 hover:bg-amber-50 focus:outline-none focus:ring-2 focus:ring-inset focus:ring-amber-500 transition-colors"
-            >
-              <span className="sr-only">Abrir menu</span>
-              {mobileMenuOpen ? (
-                <svg className="h-6 w-6" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M6 18L18 6M6 6l12 12" />
-                </svg>
-              ) : (
-                <svg className="h-6 w-6" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M4 6h16M4 12h16M4 18h16" />
-                </svg>
-              )}
-            </button>
+          {/* Right Side - Future: User Menu */}
+          <div className="hidden md:flex items-center gap-4">
+            {/* Placeholder for user avatar or notifications */}
           </div>
+
+          {/* Mobile menu button */}
+          <button
+            onClick={() => setMobileMenuOpen(!mobileMenuOpen)}
+            className="md:hidden p-2.5 rounded-lg text-medgm-dark hover:bg-medgm-gray-100 transition-colors duration-200 cursor-pointer"
+            aria-label="Toggle menu"
+          >
+            {mobileMenuOpen ? (
+              <X className="w-6 h-6" />
+            ) : (
+              <Menu className="w-6 h-6" />
+            )}
+          </button>
         </div>
       </div>
 
       {/* Mobile menu */}
       {mobileMenuOpen && (
-        <div className="sm:hidden border-t border-gray-100 bg-white">
-          <div className="pt-2 pb-3 space-y-1 px-4">
-            {mainNavLinks.map(link => (
+        <div className="md:hidden border-t border-medgm-gray-200 bg-white shadow-lg animate-fade-in">
+          <div className="p-4 space-y-2">
+            {mainNavLinks.map(({ path, label, icon: Icon }) => (
               <Link
-                key={link.path}
-                to={link.path}
+                key={path}
+                to={path}
                 onClick={() => setMobileMenuOpen(false)}
-                className={`block pl-4 pr-4 py-3 border-l-4 text-base font-medium transition-all rounded-r-lg ${
-                  isActive(link.path)
-                    ? 'bg-amber-50 border-amber-500 text-gray-900'
-                    : 'border-transparent text-gray-600 hover:bg-gray-50 hover:border-gray-300 hover:text-gray-900'
-                }`}
+                className={`
+                  flex items-center gap-3 px-4 py-3 rounded-lg font-medium text-sm
+                  transition-all duration-200 cursor-pointer
+                  ${isActive(path)
+                    ? 'bg-medgm-gold text-white shadow-premium'
+                    : 'text-medgm-dark hover:bg-medgm-gray-100'
+                  }
+                `}
               >
-                {link.label}
+                <Icon className="w-5 h-5" />
+                <span>{label}</span>
               </Link>
             ))}
           </div>

@@ -1,73 +1,343 @@
-/* Google Fonts - Fira Code & Fira Sans */
-@import url('https://fonts.googleapis.com/css2?family=Fira+Code:wght@400;500;600;700&family=Fira+Sans:wght@300;400;500;600;700&display=swap');
+/* MedGM Brand Identity - Gilroy Font Family */
+@font-face {
+  font-family: 'Gilroy';
+  src: url('https://fonts.cdnfonts.com/s/14906/Gilroy-Light.woff') format('woff');
+  font-weight: 300;
+  font-style: normal;
+  font-display: swap;
+}
+
+@font-face {
+  font-family: 'Gilroy';
+  src: url('https://fonts.cdnfonts.com/s/14906/Gilroy-Regular.woff') format('woff');
+  font-weight: 400;
+  font-style: normal;
+  font-display: swap;
+}
+
+@font-face {
+  font-family: 'Gilroy';
+  src: url('https://fonts.cdnfonts.com/s/14906/Gilroy-Medium.woff') format('woff');
+  font-weight: 500;
+  font-style: normal;
+  font-display: swap;
+}
+
+@font-face {
+  font-family: 'Gilroy';
+  src: url('https://fonts.cdnfonts.com/s/14906/Gilroy-SemiBold.woff') format('woff');
+  font-weight: 600;
+  font-style: normal;
+  font-display: swap;
+}
+
+@font-face {
+  font-family: 'Gilroy';
+  src: url('https://fonts.cdnfonts.com/s/14906/Gilroy-Bold.woff') format('woff');
+  font-weight: 700;
+  font-style: normal;
+  font-display: swap;
+}
 
 @tailwind base;
 @tailwind components;
 @tailwind utilities;
 
 @layer base {
+  * {
+    margin: 0;
+    padding: 0;
+    box-sizing: border-box;
+  }
+
+  html {
+    -webkit-font-smoothing: antialiased;
+    -moz-osx-font-smoothing: grayscale;
+  }
+
   body {
-    @apply font-body text-gray-900 bg-bg-main;
+    @apply font-gilroy text-medgm-black bg-medgm-clean;
+    font-weight: 400;
+    line-height: 1.6;
   }
 
   h1, h2, h3, h4, h5, h6 {
-    @apply font-heading;
+    @apply font-gilroy text-medgm-black;
+    font-weight: 600;
+    line-height: 1.2;
+  }
+
+  h1 { @apply text-4xl md:text-5xl; font-weight: 700; }
+  h2 { @apply text-3xl md:text-4xl; font-weight: 700; }
+  h3 { @apply text-2xl md:text-3xl; font-weight: 600; }
+  h4 { @apply text-xl md:text-2xl; font-weight: 600; }
+  h5 { @apply text-lg md:text-xl; font-weight: 600; }
+  h6 { @apply text-base md:text-lg; font-weight: 600; }
+
+  /* Reduced motion support */
+  @media (prefers-reduced-motion: reduce) {
+    *, *::before, *::after {
+      animation-duration: 0.01ms !important;
+      animation-iteration-count: 1 !important;
+      transition-duration: 0.01ms !important;
+    }
   }
 }
 
-* {
-  margin: 0;
-  padding: 0;
-  box-sizing: border-box;
+@layer components {
+  /* ==================== CARDS - Premium MedGM Style ==================== */
+
+  .card-premium {
+    @apply bg-white rounded-xl border border-medgm-gray-200
+           shadow-card transition-all duration-200 ease-out
+           hover:shadow-card-hover hover:border-medgm-gold/30;
+  }
+
+  .card-gold {
+    @apply bg-gradient-to-br from-white to-medgm-gold/5
+           border border-medgm-gold/20 rounded-xl
+           shadow-premium hover:shadow-gold-glow
+           transition-all duration-200;
+  }
+
+  /* ==================== BUTTONS - MedGM Brand ==================== */
+
+  .btn-medgm {
+    @apply px-6 py-3 rounded-lg font-medium transition-all duration-200
+           focus:outline-none focus:ring-2 focus:ring-offset-2
+           disabled:opacity-50 disabled:cursor-not-allowed
+           cursor-pointer;
+  }
+
+  .btn-primary {
+    @apply btn-medgm bg-medgm-gold text-white
+           hover:bg-medgm-gold/90 hover:shadow-gold-glow
+           focus:ring-medgm-gold;
+  }
+
+  .btn-secondary {
+    @apply btn-medgm bg-medgm-dark text-white
+           hover:bg-medgm-black
+           focus:ring-medgm-dark;
+  }
+
+  .btn-outline {
+    @apply btn-medgm border-2 border-medgm-gold text-medgm-dark
+           hover:bg-medgm-gold hover:text-white
+           focus:ring-medgm-gold;
+  }
+
+  .btn-ghost {
+    @apply btn-medgm text-medgm-dark
+           hover:bg-medgm-gray-100
+           focus:ring-medgm-gray-300;
+  }
+
+  /* Loading state for buttons */
+  .btn-loading {
+    @apply relative text-transparent pointer-events-none;
+  }
+
+  .btn-loading::after {
+    content: "";
+    @apply absolute inset-0 m-auto w-5 h-5 border-2 border-white/30 border-t-white rounded-full animate-spin;
+  }
+
+  /* ==================== INPUTS - Clean & Premium ==================== */
+
+  .input-medgm {
+    @apply w-full px-4 py-3 rounded-lg
+           border border-medgm-gray-300 bg-white
+           text-medgm-black placeholder-medgm-gray-400
+           transition-all duration-200
+           focus:outline-none focus:ring-2 focus:ring-medgm-gold focus:border-medgm-gold
+           hover:border-medgm-gray-400;
+  }
+
+  .input-error {
+    @apply border-danger focus:ring-danger focus:border-danger;
+  }
+
+  .label-medgm {
+    @apply block text-sm font-medium text-medgm-dark mb-2;
+  }
+
+  /* ==================== BADGES - Status Indicators ==================== */
+
+  .badge-medgm {
+    @apply inline-flex items-center px-3 py-1 rounded-full text-xs font-medium;
+  }
+
+  .badge-success {
+    @apply badge-medgm bg-success/10 text-success border border-success/20;
+  }
+
+  .badge-warning {
+    @apply badge-medgm bg-warning/10 text-warning border border-warning/20;
+  }
+
+  .badge-danger {
+    @apply badge-medgm bg-danger/10 text-danger border border-danger/20;
+  }
+
+  .badge-gold {
+    @apply badge-medgm bg-medgm-gold/10 text-medgm-gold border border-medgm-gold/20;
+  }
+
+  /* ==================== TABLES - Data Display ==================== */
+
+  .table-medgm {
+    @apply min-w-full divide-y divide-medgm-gray-200;
+  }
+
+  .table-medgm thead th {
+    @apply px-6 py-4 text-left text-xs font-semibold text-medgm-dark uppercase tracking-wider
+           bg-medgm-gray-50 border-b border-medgm-gray-200;
+  }
+
+  .table-medgm tbody td {
+    @apply px-6 py-4 whitespace-nowrap text-sm text-medgm-black;
+  }
+
+  .table-medgm tbody tr {
+    @apply transition-colors duration-150 hover:bg-medgm-gray-50 cursor-pointer;
+  }
+
+  /* ==================== METRICS CARDS ==================== */
+
+  .metric-card {
+    @apply card-premium p-6;
+  }
+
+  .metric-value {
+    @apply text-3xl font-bold text-medgm-black;
+  }
+
+  .metric-label {
+    @apply text-sm font-medium text-medgm-gray-600 uppercase tracking-wide;
+  }
+
+  .metric-change-positive {
+    @apply text-success text-sm font-medium;
+  }
+
+  .metric-change-negative {
+    @apply text-danger text-sm font-medium;
+  }
+
+  /* ==================== LOADING STATES ==================== */
+
+  .skeleton-medgm {
+    @apply bg-medgm-gray-200 rounded animate-pulse;
+  }
+
+  .skeleton-text {
+    @apply h-4 skeleton-medgm;
+  }
+
+  .skeleton-circle {
+    @apply rounded-full skeleton-medgm;
+  }
+
+  .spinner-medgm {
+    @apply w-8 h-8 border-3 border-medgm-gray-200 border-t-medgm-gold rounded-full animate-spin;
+  }
 }
 
-body {
-  font-family: 'Inter', system-ui, -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
-  background-color: #f9fafb;
-  color: #111827;
-  -webkit-font-smoothing: antialiased;
-  -moz-osx-font-smoothing: grayscale;
+@layer utilities {
+  /* ==================== CUSTOM SCROLLBAR - MedGM Style ==================== */
+
+  .scrollbar-medgm::-webkit-scrollbar {
+    width: 6px;
+    height: 6px;
+  }
+
+  .scrollbar-medgm::-webkit-scrollbar-track {
+    @apply bg-medgm-gray-100 rounded;
+  }
+
+  .scrollbar-medgm::-webkit-scrollbar-thumb {
+    @apply bg-medgm-gray-400 rounded hover:bg-medgm-gold;
+  }
+
+  /* ==================== TEXT UTILITIES ==================== */
+
+  .text-gradient-gold {
+    background: linear-gradient(135deg, #D6B991 0%, #C9A87D 100%);
+    -webkit-background-clip: text;
+    -webkit-text-fill-color: transparent;
+    background-clip: text;
+  }
+
+  .truncate-2 {
+    display: -webkit-box;
+    -webkit-line-clamp: 2;
+    -webkit-box-orient: vertical;
+    overflow: hidden;
+  }
+
+  .truncate-3 {
+    display: -webkit-box;
+    -webkit-line-clamp: 3;
+    -webkit-box-orient: vertical;
+    overflow: hidden;
+  }
+
+  /* ==================== FOCUS STATES - Accessibility ==================== */
+
+  .focus-gold:focus-visible {
+    @apply outline-none ring-2 ring-medgm-gold ring-offset-2;
+  }
+
+  .focus-dark:focus-visible {
+    @apply outline-none ring-2 ring-medgm-dark ring-offset-2;
+  }
+}
+
+/* ==================== GLOBAL FOCUS ==================== */
+
+*:focus-visible {
+  @apply outline-none ring-2 ring-medgm-gold ring-offset-2;
+}
+
+/* ==================== SELECTION ==================== */
+
+::selection {
+  @apply bg-medgm-gold/20 text-medgm-black;
 }
 
 /* ==================== ANIMATIONS ==================== */
 
-/* Loading skeleton animation */
-@keyframes pulse {
-  0%, 100% {
-    opacity: 1;
-  }
-  50% {
-    opacity: 0.5;
-  }
-}
-
-.animate-pulse {
-  animation: pulse 2s cubic-bezier(0.4, 0, 0.6, 1) infinite;
-}
-
-/* Spin animation for loading */
-@keyframes spin {
-  from {
-    transform: rotate(0deg);
-  }
-  to {
-    transform: rotate(360deg);
-  }
-}
-
-.animate-spin {
-  animation: spin 1s linear infinite;
-}
-
-/* Fade in animation */
 @keyframes fadeIn {
   from {
     opacity: 0;
-    transform: translateY(10px);
+    transform: translateY(8px);
   }
   to {
     opacity: 1;
     transform: translateY(0);
+  }
+}
+
+@keyframes slideInRight {
+  from {
+    opacity: 0;
+    transform: translateX(20px);
+  }
+  to {
+    opacity: 1;
+    transform: translateX(0);
+  }
+}
+
+@keyframes scaleIn {
+  from {
+    opacity: 0;
+    transform: scale(0.95);
+  }
+  to {
+    opacity: 1;
+    transform: scale(1);
   }
 }
 
@@ -75,250 +345,12 @@ body {
   animation: fadeIn 0.3s ease-out;
 }
 
-/* Scale up animation */
-@keyframes scaleUp {
-  from {
-    transform: scale(0.95);
-    opacity: 0;
-  }
-  to {
-    transform: scale(1);
-    opacity: 1;
-  }
-}
-
-.animate-scale-up {
-  animation: scaleUp 0.2s ease-out;
-}
-
-/* Slide in from right */
-@keyframes slideInRight {
-  from {
-    transform: translateX(100%);
-    opacity: 0;
-  }
-  to {
-    transform: translateX(0);
-    opacity: 1;
-  }
-}
-
 .animate-slide-in-right {
   animation: slideInRight 0.3s ease-out;
 }
 
-/* Bounce animation */
-@keyframes bounce {
-  0%, 100% {
-    transform: translateY(0);
-  }
-  50% {
-    transform: translateY(-10px);
-  }
-}
-
-.animate-bounce {
-  animation: bounce 1s ease-in-out infinite;
-}
-
-/* ==================== TRANSITIONS ==================== */
-
-.transition-all {
-  transition: all 0.3s ease-in-out;
-}
-
-.transition-colors {
-  transition: background-color 0.2s ease-in-out, border-color 0.2s ease-in-out, color 0.2s ease-in-out;
-}
-
-.transition-shadow {
-  transition: box-shadow 0.2s ease-in-out;
-}
-
-.transition-transform {
-  transition: transform 0.2s ease-in-out;
-}
-
-/* ==================== HOVER EFFECTS ==================== */
-
-.hover-lift:hover {
-  transform: translateY(-2px);
-  box-shadow: 0 10px 25px -5px rgba(0, 0, 0, 0.1), 0 8px 10px -6px rgba(0, 0, 0, 0.1);
-}
-
-.hover-glow:hover {
-  box-shadow: 0 0 20px rgba(59, 130, 246, 0.3);
-}
-
-/* ==================== CARDS ==================== */
-
-.card {
-  @apply bg-white rounded-lg shadow-sm border border-gray-100 transition-shadow hover:shadow-md;
-}
-
-.card-hover {
-  @apply bg-white rounded-lg shadow-sm border border-gray-100 transition-all hover:shadow-lg hover:-translate-y-1;
-}
-
-/* ==================== BUTTONS ==================== */
-
-.btn {
-  @apply px-4 py-2 rounded-lg font-medium transition-all focus:outline-none focus:ring-2 focus:ring-offset-2;
-}
-
-.btn-primary {
-  @apply bg-blue-600 text-white hover:bg-blue-700 focus:ring-blue-500;
-}
-
-.btn-secondary {
-  @apply bg-gray-100 text-gray-700 hover:bg-gray-200 focus:ring-gray-500;
-}
-
-.btn-success {
-  @apply bg-green-600 text-white hover:bg-green-700 focus:ring-green-500;
-}
-
-.btn-danger {
-  @apply bg-red-600 text-white hover:bg-red-700 focus:ring-red-500;
-}
-
-/* ==================== INPUTS ==================== */
-
-.input {
-  @apply w-full px-3 py-2 border border-gray-300 rounded-lg transition-colors focus:ring-2 focus:ring-blue-500 focus:border-blue-500 focus:outline-none;
-}
-
-.input:hover {
-  @apply border-gray-400;
-}
-
-.input-error {
-  @apply border-red-500 focus:ring-red-500 focus:border-red-500;
-}
-
-/* ==================== TABLES ==================== */
-
-.table-container {
-  @apply overflow-x-auto rounded-lg border border-gray-200;
-}
-
-.table {
-  @apply min-w-full divide-y divide-gray-200;
-}
-
-.table th {
-  @apply px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider bg-gray-50;
-}
-
-.table td {
-  @apply px-6 py-4 whitespace-nowrap text-sm text-gray-900;
-}
-
-.table tr:hover {
-  @apply bg-gray-50;
-}
-
-/* ==================== BADGES ==================== */
-
-.badge {
-  @apply inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium;
-}
-
-.badge-success {
-  @apply bg-green-100 text-green-800;
-}
-
-.badge-warning {
-  @apply bg-yellow-100 text-yellow-800;
-}
-
-.badge-danger {
-  @apply bg-red-100 text-red-800;
-}
-
-.badge-info {
-  @apply bg-blue-100 text-blue-800;
-}
-
-/* ==================== SCROLLBAR ==================== */
-
-::-webkit-scrollbar {
-  width: 8px;
-  height: 8px;
-}
-
-::-webkit-scrollbar-track {
-  background: #f1f1f1;
-  border-radius: 4px;
-}
-
-::-webkit-scrollbar-thumb {
-  background: #c1c1c1;
-  border-radius: 4px;
-}
-
-::-webkit-scrollbar-thumb:hover {
-  background: #a1a1a1;
-}
-
-/* ==================== MODAL ==================== */
-
-.modal-backdrop {
-  @apply fixed inset-0 bg-black bg-opacity-50 transition-opacity;
-}
-
-.modal-content {
-  @apply bg-white rounded-lg shadow-xl transform transition-all;
-}
-
-/* ==================== LOADING ==================== */
-
-.loading-overlay {
-  @apply fixed inset-0 bg-white bg-opacity-75 flex items-center justify-center z-50;
-}
-
-.loading-spinner {
-  @apply w-12 h-12 border-4 border-blue-200 border-t-blue-600 rounded-full animate-spin;
-}
-
-/* ==================== SKELETON ==================== */
-
-.skeleton {
-  @apply bg-gray-200 rounded animate-pulse;
-}
-
-.skeleton-text {
-  @apply h-4 bg-gray-200 rounded animate-pulse;
-}
-
-.skeleton-circle {
-  @apply rounded-full bg-gray-200 animate-pulse;
-}
-
-/* ==================== TOOLTIPS ==================== */
-
-.tooltip {
-  @apply relative inline-block;
-}
-
-.tooltip-text {
-  @apply invisible absolute z-50 py-2 px-3 text-sm text-white bg-gray-900 rounded-lg whitespace-nowrap opacity-0 transition-opacity;
-}
-
-.tooltip:hover .tooltip-text {
-  @apply visible opacity-100;
-}
-
-/* ==================== RESPONSIVE ==================== */
-
-@media (max-width: 640px) {
-  .hide-mobile {
-    display: none;
-  }
-
-  .table td, .table th {
-    @apply px-3 py-2 text-xs;
-  }
+.animate-scale-in {
+  animation: scaleIn 0.2s ease-out;
 }
 
 /* ==================== PRINT ==================== */
@@ -329,52 +361,10 @@ body {
   }
 
   body {
-    background: white;
+    @apply bg-white text-black;
   }
 
-  .shadow, .shadow-sm, .shadow-md, .shadow-lg {
-    box-shadow: none;
+  .card-premium, .card-gold {
+    @apply shadow-none border-medgm-gray-300;
   }
-}
-
-/* ==================== FOCUS STATES ==================== */
-
-*:focus-visible {
-  @apply outline-none ring-2 ring-blue-500 ring-offset-2;
-}
-
-/* ==================== SELECTION ==================== */
-
-::selection {
-  @apply bg-blue-200 text-blue-900;
-}
-
-/* ==================== UTILITIES ==================== */
-
-.truncate-2 {
-  display: -webkit-box;
-  -webkit-line-clamp: 2;
-  -webkit-box-orient: vertical;
-  overflow: hidden;
-}
-
-.truncate-3 {
-  display: -webkit-box;
-  -webkit-line-clamp: 3;
-  -webkit-box-orient: vertical;
-  overflow: hidden;
-}
-
-/* Glass effect */
-.glass {
-  background: rgba(255, 255, 255, 0.7);
-  backdrop-filter: blur(10px);
-  -webkit-backdrop-filter: blur(10px);
-}
-
-/* Gradient text */
-.gradient-text {
-  background: linear-gradient(135deg, #3B82F6 0%, #8B5CF6 100%);
-  -webkit-background-clip: text;
-  -webkit-text-fill-color: transparent;
 }

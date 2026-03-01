@@ -21,39 +21,58 @@ export default {
   theme: {
     extend: {
       colors: {
-        // Design System 2026 - Analytics Dashboard
-        primary: '#1E40AF', // Blue data
-        'primary-light': '#3B82F6',
-        'primary-dark': '#1E3A8A',
-        secondary: '#3B82F6',
-        accent: '#F59E0B', // Amber CTA
+        // MedGM Brand Identity 2026
+        'medgm': {
+          'clean': '#F5F5F5',    // Primary Clean (background)
+          'gold': '#D6B991',      // Primary Gold (accent/CTA)
+          'dark': '#2B2B2B',      // Primary Dark Gray
+          'black': '#151515',     // Primary Black
 
-        // MedGM Brand Colors (legacy)
-        'brand-gold': '#D6B991',
-        'brand-clean': '#F8FAFC',
-        'brand-dark': '#2B2B2B',
-        'brand-black': '#151515',
+          // Grayscale Palette
+          'gray-50': '#FAFAFA',
+          'gray-100': '#F5F5F5',
+          'gray-200': '#E5E5E5',
+          'gray-300': '#D4D4D4',
+          'gray-400': '#A3A3A3',
+          'gray-500': '#737373',
+          'gray-600': '#525252',
+          'gray-700': '#404040',
+          'gray-800': '#262626',
+        },
 
-        // Functional colors
+        // Primary/Secondary mapped to MedGM brand
+        primary: '#D6B991',        // Gold for CTAs
+        secondary: '#2B2B2B',      // Dark for secondary actions
+
+        // Functional colors (analytics)
         success: '#10B981',
         danger: '#EF4444',
         warning: '#F59E0B',
         info: '#3B82F6',
 
         // Backgrounds
-        'bg-main': '#F8FAFC',
+        'bg-main': '#F5F5F5',      // MedGM Clean
         'bg-card': '#FFFFFF',
-        'bg-hover': '#F1F5F9',
+        'bg-hover': '#FAFAFA',
       },
       fontFamily: {
-        'heading': ['Fira Code', 'monospace'],
-        'body': ['Fira Sans', 'sans-serif'],
+        'sans': ['Gilroy', 'system-ui', 'sans-serif'],
         'gilroy': ['Gilroy', 'sans-serif'],
+        'heading': ['Gilroy', 'sans-serif'],
+        'body': ['Gilroy', 'sans-serif'],
+      },
+      fontWeight: {
+        'light': 300,
+        'normal': 400,
+        'medium': 500,
+        'semibold': 600,
+        'bold': 700,
       },
       boxShadow: {
-        'card': '0 1px 3px 0 rgba(0, 0, 0, 0.1), 0 1px 2px 0 rgba(0, 0, 0, 0.06)',
-        'card-hover': '0 10px 15px -3px rgba(0, 0, 0, 0.1), 0 4px 6px -2px rgba(0, 0, 0, 0.05)',
-        'glass': '0 8px 32px 0 rgba(31, 38, 135, 0.15)',
+        'card': '0 1px 3px 0 rgba(21, 21, 21, 0.04), 0 1px 2px 0 rgba(21, 21, 21, 0.02)',
+        'card-hover': '0 8px 16px -4px rgba(21, 21, 21, 0.08), 0 4px 6px -2px rgba(21, 21, 21, 0.04)',
+        'premium': '0 4px 20px -2px rgba(214, 185, 145, 0.15)',
+        'gold-glow': '0 0 20px rgba(214, 185, 145, 0.3)',
       },
       backdropBlur: {
         xs: '2px',
