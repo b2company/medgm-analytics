@@ -22,8 +22,11 @@ app = FastAPI(
 )
 
 # Configure CORS for frontend
-# Lê de variável de ambiente ou usa defaults de desenvolvimento
-cors_origins = os.getenv("CORS_ORIGINS", "http://localhost:5173,http://127.0.0.1:5173")
+# Lê de variável de ambiente ou usa defaults + Vercel
+cors_origins = os.getenv(
+    "CORS_ORIGINS",
+    "http://localhost:5173,http://127.0.0.1:5173,https://medgm-analytics.vercel.app"
+)
 allowed_origins = [origin.strip() for origin in cors_origins.split(",")]
 
 print(f"🌐 CORS configurado para: {allowed_origins}")
@@ -34,6 +37,7 @@ app.add_middleware(
     allow_credentials=True,
     allow_methods=["*"],
     allow_headers=["*"],
+    expose_headers=["*"]  # Expõe todos os headers
 )
 
 # Include routers
