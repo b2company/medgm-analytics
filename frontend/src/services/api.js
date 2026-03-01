@@ -13,12 +13,13 @@ console.log('🚀 API_URL configurada:', API_URL);
 console.log('🔒 Protocolo:', API_URL.split('://')[0]);
 
 const api = axios.create({
-  baseURL: API_URL,
+  baseURL: API_URL + '/',  // Adiciona trailing slash no baseURL
   timeout: 30000,
   headers: {
     'Content-Type': 'application/json',
   },
-  maxRedirects: 0  // Não seguir redirects para evitar HTTPS→HTTP
+  maxRedirects: 5,  // Permitir redirects (padrão)
+  validateStatus: (status) => status >= 200 && status < 400  // Aceitar 3xx como sucesso
 });
 
 // Interceptor para garantir HTTPS (redirect_slashes=False no backend)
