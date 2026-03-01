@@ -2,8 +2,9 @@
 FastAPI main application for MedGM Analytics.
 """
 
-from fastapi import FastAPI
+from fastapi import FastAPI, Request
 from fastapi.middleware.cors import CORSMiddleware
+from fastapi.responses import RedirectResponse
 from dotenv import load_dotenv
 import os
 
@@ -17,7 +18,7 @@ load_dotenv()
 app = FastAPI(
     title="MedGM Analytics API",
     description="Backend API for MedGM Analytics Platform - Sistema completo de gestao financeira e comercial",
-    version="2.0.2"  # Reverted to working state (redirect_slashes=True by default)
+    version="2.0.3"  # Fixed HTTPS redirect and trust proxy for Railway
 )
 
 # Configure CORS for frontend
@@ -38,6 +39,26 @@ app.add_middleware(
     allow_headers=["*"],
     expose_headers=["*"]  # Expõe todos os headers
 )
+
+# Middleware para forçar HTTPS (trust proxy do Railway)
+@app.middleware("http")
+async def force_https_middleware(request: Request, call_next):
+    """
+    Force HTTPS redirects based on x-forwarded-proto header.
+    Railway uses this header to indicate the original protocol.
+    """
+    # Check if request came via HTTP (based on Railway's x-forwarded-proto)
+    forwarded_proto = request.headers.get("x-forwarded-proto")
+
+    if forwarded_proto == "http":
+        # Force redirect to HTTPS
+        url = str(request.url).replace("http://", "https://", 1)
+        print(f"🔒 Redirecting HTTP to HTTPS: {url}")
+        return RedirectResponse(url=url, status_code=301)
+
+    # Continue with normal request
+    response = await call_next(request)
+    return response
 
 # Include routers
 app.include_router(upload.router)
@@ -72,7 +93,7 @@ async def health_check():
     return {
         "status": "healthy",
         "service": "MedGM Analytics API",
-        "version": "2.0.0"
+        "version": "2.0.3"
     }
 
 
@@ -83,7 +104,7 @@ async def root():
     """
     return {
         "message": "MedGM Analytics API",
-        "version": "2.0.0",
+        "version": "2.0.3",
         "endpoints": {
             "health": "/health",
             "docs": "/docs",
