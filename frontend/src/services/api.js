@@ -18,6 +18,7 @@ const api = axios.create({
   headers: {
     'Content-Type': 'application/json',
   },
+  maxRedirects: 0  // Não seguir redirects para evitar HTTPS→HTTP
 });
 
 // Interceptor para garantir HTTPS (redirect_slashes=False no backend)

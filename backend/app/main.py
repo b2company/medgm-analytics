@@ -17,8 +17,8 @@ load_dotenv()
 app = FastAPI(
     title="MedGM Analytics API",
     description="Backend API for MedGM Analytics Platform - Sistema completo de gestao financeira e comercial",
-    version="2.0.0",
-    redirect_slashes=False  # Desabilita redirects automáticos que causam HTTPS→HTTP
+    version="2.0.1"  # Increment version to force Railway redeploy
+    # redirect_slashes deixado no padrão (True) por compatibilidade
 )
 
 # Configure CORS for frontend
