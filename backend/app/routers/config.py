@@ -63,6 +63,7 @@ class FunilUpdate(BaseModel):
 # ==================== PESSOA CRUD ====================
 
 @router.get("/pessoas")
+@router.get("/pessoas/")  # Aceita ambas versões
 async def list_pessoas(
     funcao: Optional[str] = None,
     ativo: Optional[bool] = None,
@@ -123,6 +124,7 @@ async def get_pessoa(id: int, db: Session = Depends(get_db)):
 
 
 @router.post("/pessoas")
+@router.post("/pessoas/")  # Aceita ambas versões
 async def create_pessoa(item: PessoaCreate, db: Session = Depends(get_db)):
     """
     Cria uma nova pessoa no sistema.
@@ -227,6 +229,7 @@ async def delete_pessoa(id: int, db: Session = Depends(get_db)):
 # ==================== PRODUTO CRUD ====================
 
 @router.get("/produtos")
+@router.get("/produtos/")  # Aceita ambas versões
 async def list_produtos(
     categoria: Optional[str] = None,
     ativo: Optional[bool] = None,
@@ -288,6 +291,7 @@ async def get_produto(id: int, db: Session = Depends(get_db)):
 
 
 @router.post("/produtos")
+@router.post("/produtos/")  # Aceita ambas versões
 async def create_produto(item: ProdutoCreate, db: Session = Depends(get_db)):
     """
     Cria um novo produto.
@@ -416,6 +420,7 @@ async def delete_produto(id: int, db: Session = Depends(get_db)):
 # ==================== FUNIL CRUD ====================
 
 @router.get("/funis")
+@router.get("/funis/")  # Aceita ambas versões
 async def list_funis(
     ativo: Optional[bool] = None,
     db: Session = Depends(get_db)
@@ -472,6 +477,7 @@ async def get_funil(id: int, db: Session = Depends(get_db)):
 
 
 @router.post("/funis")
+@router.post("/funis/")  # Aceita ambas versões
 async def create_funil(item: FunilCreate, db: Session = Depends(get_db)):
     """
     Cria um novo funil.

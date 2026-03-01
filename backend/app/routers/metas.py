@@ -102,6 +102,7 @@ async def get_meta_pessoa_mes(
 # ==================== CRUD METAS PESSOAS ====================
 
 @router.get("/")
+@router.get("")  # Aceita ambas versões (com/sem trailing slash)
 async def listar_metas(
     mes: Optional[int] = None,
     ano: Optional[int] = None,
@@ -169,6 +170,7 @@ async def listar_metas(
 
 
 @router.post("/")
+@router.post("")  # Aceita ambas versões (com/sem trailing slash)
 async def criar_meta(item: MetaCreate, db: Session = Depends(get_db)):
     """Cria uma nova meta"""
     try:
