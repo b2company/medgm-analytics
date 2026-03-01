@@ -20,7 +20,7 @@ const api = axios.create({
   },
 });
 
-// Interceptor para garantir HTTPS e trailing slash (evitar redirects 301)
+// Interceptor para garantir HTTPS (redirect_slashes=False no backend)
 api.interceptors.request.use((config) => {
   // Forçar HTTPS no baseURL
   if (config.baseURL && config.baseURL.startsWith('http://')) {
@@ -32,16 +32,9 @@ api.interceptors.request.use((config) => {
     config.url = config.url.replace('http://', 'https://');
   }
 
-  // ADICIONAR TRAILING SLASH para evitar redirects 301 do FastAPI
-  if (config.url && !config.url.endsWith('/') && !config.url.includes('?')) {
-    config.url = config.url + '/';
-    console.log('✏️ Adicionado trailing slash:', config.url);
-  }
-
   // Log detalhado
   const fullUrl = axios.getUri(config);
-  console.log('📡 Requisição completa para:', fullUrl);
-  console.log('📋 Config:', { baseURL: config.baseURL, url: config.url, params: config.params });
+  console.log('📡 Requisição para:', fullUrl);
 
   // Garantir que a URL final seja HTTPS
   if (fullUrl && fullUrl.startsWith('http://')) {
