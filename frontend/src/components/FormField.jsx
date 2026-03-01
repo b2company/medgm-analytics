@@ -133,3 +133,14 @@ export const Form = ({ onSubmit, children, className = '' }) => {
     </form>
   );
 };
+
+/**
+ * FormRow - Grid para campos lado a lado
+ */
+export const FormRow = ({ children, className = '' }) => {
+  return (
+    <div className={`grid grid-cols-1 md:grid-cols-2 gap-4 ${className}`}>
+      {children}
+    </div>
+  );
+};
