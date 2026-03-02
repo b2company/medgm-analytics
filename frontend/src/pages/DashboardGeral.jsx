@@ -220,18 +220,13 @@ const DashboardGeral = ({ mes, ano }) => {
                 color: 'bg-blue-600'
               },
               {
-                name: 'Calls Realizadas',
-                value: comercial.kpis.calls_realizadas?.valor || 0,
-                color: 'bg-green-500'
-              },
-              {
                 name: 'Vendas',
                 value: comercial.kpis.vendas.valor,
                 color: 'bg-green-600'
               }
             ]}
             formatValue={formatNumber}
-            info="Funil comercial completo desde o recebimento do lead até o fechamento. SDR qualifica e agenda, Closer realiza call e converte em venda."
+            info="Funil comercial completo desde o recebimento do lead até o fechamento. SDR qualifica e agenda, Closer realiza reunião e converte em venda."
           />
         </div>
       </div>
@@ -427,10 +422,10 @@ const DashboardGeral = ({ mes, ano }) => {
 
       {/* SEÇÃO 5: PROJEÇÕES DO MÊS */}
       <div className="bg-gradient-to-br from-blue-50 to-indigo-50 rounded-xl shadow-md border border-blue-200 p-6">
-        <h2 className="text-2xl font-bold text-gray-900 mb-4">🔮 Projeções do Mês</h2>
+        <h2 className="text-2xl font-bold text-gray-900 mb-4">Projeções do Mês</h2>
 
         {/* Alerta Principal - Banner de Atenção */}
-        <div className="bg-yellow-50 border-l-4 border-yellow-400 rounded-lg p-4 mb-6 shadow-sm">
+        <div className="bg-yellow-50 border-l-4 border-yellow-400 rounded-lg p-4 shadow-sm">
           <div className="flex items-center">
             <div className="flex-shrink-0">
               <svg className="h-6 w-6 text-yellow-400" fill="currentColor" viewBox="0 0 20 20">
@@ -444,102 +439,6 @@ const DashboardGeral = ({ mes, ano }) => {
             </div>
           </div>
         </div>
-
-        {/* Grid 2 colunas: Vendas e Faturamento */}
-        <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
-
-          {/* Card Vendas */}
-          <div className="bg-white rounded-xl p-6 shadow-sm border border-gray-100">
-            <h3 className="text-lg font-semibold text-gray-900 mb-4">Vendas</h3>
-            <div className="flex items-end justify-between mb-4">
-              <div>
-                <p className="text-xs text-gray-500 uppercase tracking-wide mb-1">Projeção</p>
-                <p className={`text-3xl font-bold ${
-                  projecoes.vendas.projecao >= projecoes.vendas.meta ? 'text-green-600' : 'text-red-600'
-                }`}>
-                  {projecoes.vendas.projecao}
-                </p>
-              </div>
-              <div>
-                <p className="text-xs text-gray-500 uppercase tracking-wide mb-1">Meta</p>
-                <p className="text-2xl font-bold text-gray-700">{projecoes.vendas.meta}</p>
-              </div>
-              <div>
-                <p className="text-xs text-gray-500 uppercase tracking-wide mb-1">Realizado</p>
-                <p className="text-2xl font-bold text-blue-600">{projecoes.vendas.realizado}</p>
-              </div>
-            </div>
-            <div className="pt-4 border-t border-gray-200 space-y-2">
-              <div className="flex justify-between text-sm">
-                <span className="text-gray-600">Ritmo atual:</span>
-                <span className="font-semibold text-gray-900">
-                  {projecoes.ritmo_atual.vendas_dia.toFixed(2)} vendas/dia
-                </span>
-              </div>
-              <div className="flex justify-between text-sm">
-                <span className="text-gray-600">Ritmo necessário:</span>
-                <span className="font-semibold text-gray-900">
-                  {projecoes.ritmo_necessario.vendas_dia.toFixed(2)} vendas/dia
-                </span>
-              </div>
-            </div>
-          </div>
-
-          {/* Card Faturamento */}
-          <div className="bg-white rounded-xl p-6 shadow-sm border border-gray-100">
-            <h3 className="text-lg font-semibold text-gray-900 mb-4">Faturamento</h3>
-            <div className="flex items-end justify-between mb-4">
-              <div>
-                <p className="text-xs text-gray-500 uppercase tracking-wide mb-1">Projeção</p>
-                <p className={`text-2xl font-bold ${
-                  projecoes.faturamento.projecao >= projecoes.faturamento.meta ? 'text-green-600' : 'text-red-600'
-                }`}>
-                  {formatCurrency(projecoes.faturamento.projecao)}
-                </p>
-              </div>
-              <div>
-                <p className="text-xs text-gray-500 uppercase tracking-wide mb-1">Meta</p>
-                <p className="text-xl font-bold text-gray-700">
-                  {formatCurrency(projecoes.faturamento.meta)}
-                </p>
-              </div>
-              <div>
-                <p className="text-xs text-gray-500 uppercase tracking-wide mb-1">Realizado</p>
-                <p className="text-xl font-bold text-blue-600">
-                  {formatCurrency(projecoes.faturamento.realizado)}
-                </p>
-              </div>
-            </div>
-            <div className="pt-4 border-t border-gray-200 space-y-2">
-              <div className="flex justify-between text-sm">
-                <span className="text-gray-600">Ritmo atual:</span>
-                <span className="font-semibold text-gray-900">
-                  {formatCurrency(projecoes.ritmo_atual.faturamento_dia)}/dia
-                </span>
-              </div>
-              <div className="flex justify-between text-sm">
-                <span className="text-gray-600">Ritmo necessário:</span>
-                <span className="font-semibold text-gray-900">
-                  {formatCurrency(projecoes.ritmo_necessario.faturamento_dia)}/dia
-                </span>
-              </div>
-            </div>
-          </div>
-        </div>
-
-        {/* Footer - Dias Úteis Restantes */}
-        {projecoes.dias_uteis_restantes >= 0 && (
-          <div className="mt-6 pt-4 border-t border-blue-200">
-            <div className="flex items-center justify-center gap-2 text-gray-700">
-              <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M8 7V3m8 4V3m-9 8h10M5 21h14a2 2 0 002-2V7a2 2 0 00-2-2H5a2 2 0 00-2 2v12a2 2 0 002 2z" />
-              </svg>
-              <span className="text-sm font-medium">
-                {projecoes.dias_uteis_restantes} dias úteis restantes no mês
-              </span>
-            </div>
-          </div>
-        )}
       </div>
     </div>
   );
