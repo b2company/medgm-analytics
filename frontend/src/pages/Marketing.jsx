@@ -264,30 +264,22 @@ function VendaDiretaTab() {
             <label className="block text-sm font-medium text-gray-700 mb-1">
               Campanhas ({selectedCampaigns.length} selecionadas)
             </label>
-            <div className="relative">
-              <select
-                multiple
-                value={selectedCampaigns}
-                onChange={(e) => {
-                  const options = Array.from(e.target.selectedOptions);
-                  setSelectedCampaigns(options.map(opt => opt.value));
-                }}
-                className="w-full border border-gray-300 rounded-lg px-3 py-2 text-sm h-10 overflow-hidden"
-                style={{ appearance: 'none' }}
-              >
-                <option value="">Todas as campanhas</option>
-                {campaigns.map((camp) => (
-                  <option key={camp.id} value={camp.id}>
-                    {camp.name}
-                  </option>
-                ))}
-              </select>
-              <div className="absolute right-3 top-3 pointer-events-none">
-                <svg className="w-4 h-4 text-gray-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M19 9l-7 7-7-7" />
-                </svg>
-              </div>
-            </div>
+            <select
+              multiple
+              value={selectedCampaigns}
+              onChange={(e) => {
+                const options = Array.from(e.target.selectedOptions);
+                setSelectedCampaigns(options.map(opt => opt.value));
+              }}
+              className="w-full border border-gray-300 rounded-lg px-3 py-2 text-sm"
+              size="5"
+            >
+              {campaigns.map((camp) => (
+                <option key={camp.id} value={camp.id}>
+                  {camp.name}
+                </option>
+              ))}
+            </select>
             <p className="text-xs text-gray-500 mt-1">Segure Ctrl/Cmd para selecionar múltiplas</p>
           </div>
 
@@ -741,30 +733,22 @@ function CapturaLeadTab() {
             <label className="block text-sm font-medium text-gray-700 mb-1">
               Campanhas ({selectedCampaigns.length} selecionadas)
             </label>
-            <div className="relative">
-              <select
-                multiple
-                value={selectedCampaigns}
-                onChange={(e) => {
-                  const options = Array.from(e.target.selectedOptions);
-                  setSelectedCampaigns(options.map(opt => opt.value));
-                }}
-                className="w-full border border-gray-300 rounded-lg px-3 py-2 text-sm h-10 overflow-hidden"
-                style={{ appearance: 'none' }}
-              >
-                <option value="">Todas as campanhas</option>
-                {campaigns.map((camp) => (
-                  <option key={camp.id} value={camp.id}>
-                    {camp.name}
-                  </option>
-                ))}
-              </select>
-              <div className="absolute right-3 top-3 pointer-events-none">
-                <svg className="w-4 h-4 text-gray-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M19 9l-7 7-7-7" />
-                </svg>
-              </div>
-            </div>
+            <select
+              multiple
+              value={selectedCampaigns}
+              onChange={(e) => {
+                const options = Array.from(e.target.selectedOptions);
+                setSelectedCampaigns(options.map(opt => opt.value));
+              }}
+              className="w-full border border-gray-300 rounded-lg px-3 py-2 text-sm"
+              size="5"
+            >
+              {campaigns.map((camp) => (
+                <option key={camp.id} value={camp.id}>
+                  {camp.name}
+                </option>
+              ))}
+            </select>
             <p className="text-xs text-gray-500 mt-1">Segure Ctrl/Cmd para selecionar múltiplas</p>
           </div>
 
