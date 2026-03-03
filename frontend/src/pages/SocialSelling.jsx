@@ -247,19 +247,19 @@ const SocialSelling = ({ mes: mesProp, ano: anoProp }) => {
 
   // Filtrar métricas baseado nos filtros ativos
   const metricasFiltradas = metricas.filter(m => {
-    const metricaData = m.data ? new Date(m.data) : null;
+    // Parse date without timezone conversion (YYYY-MM-DD)
+    const metricaData = m.data ? m.data : null;
 
     // Filtro de data range
     let passaFiltroData = true;
     if (filtros.dataInicio && metricaData) {
       const [dia, mes, ano] = filtros.dataInicio.split('/');
-      const dataInicio = new Date(ano, mes - 1, dia);
+      const dataInicio = `${ano}-${mes.padStart(2, '0')}-${dia.padStart(2, '0')}`;
       passaFiltroData = passaFiltroData && metricaData >= dataInicio;
     }
     if (filtros.dataFim && metricaData) {
       const [dia, mes, ano] = filtros.dataFim.split('/');
-      const dataFim = new Date(ano, mes - 1, dia);
-      dataFim.setHours(23, 59, 59);
+      const dataFim = `${ano}-${mes.padStart(2, '0')}-${dia.padStart(2, '0')}`;
       passaFiltroData = passaFiltroData && metricaData <= dataFim;
     }
 

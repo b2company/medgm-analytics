@@ -156,7 +156,10 @@ const EditableDataTable = ({
       return new Intl.NumberFormat('pt-BR').format(value || 0);
     }
     if (column.format === 'date') {
-      return new Date(value).toLocaleDateString('pt-BR');
+      // Parse YYYY-MM-DD directly without timezone conversion
+      if (!value) return '-';
+      const [year, month, day] = value.split('-');
+      return `${day}/${month}/${year}`;
     }
     return value;
   };
