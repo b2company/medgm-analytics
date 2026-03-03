@@ -271,16 +271,27 @@ function VendaDiretaTab() {
                 const options = Array.from(e.target.selectedOptions);
                 setSelectedCampaigns(options.map(opt => opt.value));
               }}
-              className="w-full border border-gray-300 rounded-lg px-3 py-2 text-sm"
+              className="w-full border border-gray-300 rounded-lg px-3 py-2 text-sm bg-white"
               size="5"
+              disabled={loading || campaigns.length === 0}
             >
-              {campaigns.map((camp) => (
-                <option key={camp.id} value={camp.id}>
-                  {camp.name}
-                </option>
-              ))}
+              {loading ? (
+                <option disabled>Carregando campanhas...</option>
+              ) : campaigns.length === 0 ? (
+                <option disabled>Nenhuma campanha encontrada</option>
+              ) : (
+                campaigns.map((camp) => (
+                  <option key={camp.id} value={camp.id}>
+                    {camp.name}
+                  </option>
+                ))
+              )}
             </select>
-            <p className="text-xs text-gray-500 mt-1">Segure Ctrl/Cmd para selecionar múltiplas</p>
+            <p className="text-xs text-gray-500 mt-1">
+              {campaigns.length > 0
+                ? 'Segure Ctrl/Cmd para selecionar múltiplas'
+                : 'Configure o Meta Ads para ver campanhas'}
+            </p>
           </div>
 
           <div className="flex items-end">
@@ -740,16 +751,27 @@ function CapturaLeadTab() {
                 const options = Array.from(e.target.selectedOptions);
                 setSelectedCampaigns(options.map(opt => opt.value));
               }}
-              className="w-full border border-gray-300 rounded-lg px-3 py-2 text-sm"
+              className="w-full border border-gray-300 rounded-lg px-3 py-2 text-sm bg-white"
               size="5"
+              disabled={loading || campaigns.length === 0}
             >
-              {campaigns.map((camp) => (
-                <option key={camp.id} value={camp.id}>
-                  {camp.name}
-                </option>
-              ))}
+              {loading ? (
+                <option disabled>Carregando campanhas...</option>
+              ) : campaigns.length === 0 ? (
+                <option disabled>Nenhuma campanha encontrada</option>
+              ) : (
+                campaigns.map((camp) => (
+                  <option key={camp.id} value={camp.id}>
+                    {camp.name}
+                  </option>
+                ))
+              )}
             </select>
-            <p className="text-xs text-gray-500 mt-1">Segure Ctrl/Cmd para selecionar múltiplas</p>
+            <p className="text-xs text-gray-500 mt-1">
+              {campaigns.length > 0
+                ? 'Segure Ctrl/Cmd para selecionar múltiplas'
+                : 'Configure o Meta Ads para ver campanhas'}
+            </p>
           </div>
 
           <div className="flex items-end">
