@@ -6,10 +6,13 @@ Handles metrics tracking and automatic KPI calculations.
 from fastapi import APIRouter, Depends, HTTPException, Query
 from sqlalchemy.orm import Session
 from app.database import get_db
-from app.models.models import QuizMetrics, VendaDiretaMetrics
+from app.models.models import QuizMetrics, VendaDiretaMetrics, MetaAdsConfig
 from pydantic import BaseModel, field_validator
 from typing import Optional, List
-from datetime import date, datetime
+from datetime import date, datetime, timedelta
+from facebook_business.api import FacebookAdsApi
+from facebook_business.adobjects.adaccount import AdAccount
+from facebook_business.adobjects.campaign import Campaign
 
 router = APIRouter(prefix="/funil", tags=["Funil Metrics"])
 
@@ -389,3 +392,67 @@ async def delete_venda_direta_metrics(id: int, db: Session = Depends(get_db)):
     except Exception as e:
         db.rollback()
         raise HTTPException(status_code=500, detail=f"Erro ao deletar métrica: {str(e)}")
+
+# ============ IMPORTAÇÃO DO META ADS ============
+
+@router.get("/meta/campanhas")
+async def get_campanhas_para_importar(
+    date_start: str = Query(..., description="Data inicial (YYYY-MM-DD)"),
+    date_end: str = Query(..., description="Data final (YYYY-MM-DD)"),
+    db: Session = Depends(get_db)
+):
+    """
+    Retorna lista de campanhas do Meta Ads com suas métricas para importação.
+    Usado para selecionar qual campanha importar para Quiz SE ou Venda Direta.
+    """
+    try:
+        # Buscar configuração do Meta Ads
+        config = db.query(MetaAdsConfig).filter(MetaAdsConfig.status == 'active').first()
+        if not config:
+            raise HTTPException(status_code=404, detail="Meta Ads não configurado")
+
+        # Inicializar API
+        FacebookAdsApi.init(access_token=config.access_token)
+        account = AdAccount(config.ad_account_id)
+
+        # Buscar campanhas
+        campaigns = account.get_campaigns(
+            fields=['id', 'name', 'status', 'objective'],
+            params={'effective_status': ['ACTIVE', 'PAUSED']}
+        )
+
+        result = []
+        for campaign in campaigns:
+            # Buscar insights da campanha para o período
+            try:
+                insights = campaign.get_insights(
+                    fields=['impressions', 'clicks', 'spend'],
+                    params={
+                        'time_range': {
+                            'since': date_start,
+                            'until': date_end
+                        },
+                        'level': 'campaign'
+                    }
+                )
+
+                if insights:
+                    insight = insights[0]
+                    result.append({
+                        "id": campaign.get('id'),
+                        "name": campaign.get('name'),
+                        "status": campaign.get('status'),
+                        "impressoes": int(insight.get('impressions', 0)),
+                        "cliques": int(insight.get('clicks', 0)),
+                        "verba": float(insight.get('spend', 0))
+                    })
+            except Exception as e:
+                print(f"Erro ao buscar insights da campanha {campaign.get('id')}: {str(e)}")
+                continue
+
+        return result
+
+    except HTTPException:
+        raise
+    except Exception as e:
+        raise HTTPException(status_code=500, detail=f"Erro ao buscar campanhas: {str(e)}")

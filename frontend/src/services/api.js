@@ -527,4 +527,12 @@ export const deleteVendaDiretaMetrics = async (id) => {
   return response.data;
 };
 
+// ==================== IMPORTAÇÃO META ADS ====================
+export const getMetaCampanhasParaImportar = async (dateStart, dateEnd) => {
+  const response = await api.get('/funil/meta/campanhas', {
+    params: { date_start: dateStart, date_end: dateEnd }
+  });
+  return response.data;
+};
+
 export default api;
