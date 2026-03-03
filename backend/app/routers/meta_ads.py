@@ -377,3 +377,189 @@ async def get_daily_insights(
         raise
     except Exception as e:
         raise HTTPException(status_code=500, detail=f"Erro ao buscar insights diários: {str(e)}")
+
+@router.get("/campaigns/{campaign_id}/ads")
+async def get_campaign_ads(
+    campaign_id: str,
+    db: Session = Depends(get_db)
+):
+    """
+    Retorna todos os anúncios de uma campanha com suas métricas.
+    """
+    try:
+        config = get_meta_config(db)
+        init_facebook_api(config.access_token)
+
+        campaign = Campaign(campaign_id)
+
+        # Buscar anúncios da campanha
+        ads = campaign.get_ads(
+            fields=['id', 'name', 'status', 'creative'],
+        )
+
+        result = []
+        for ad in ads:
+            # Buscar insights do anúncio
+            try:
+                insights = ad.get_insights(
+                    fields=['impressions', 'clicks', 'spend', 'cpc', 'cpm', 'ctr'],
+                    params={'date_preset': 'last_30d'}
+                )
+
+                if insights:
+                    insight = insights[0]
+                    result.append({
+                        "id": ad.get('id'),
+                        "name": ad.get('name'),
+                        "status": ad.get('status'),
+                        "impressions": int(insight.get('impressions', 0)),
+                        "clicks": int(insight.get('clicks', 0)),
+                        "spend": float(insight.get('spend', 0)),
+                        "cpc": float(insight.get('cpc', 0)),
+                        "cpm": float(insight.get('cpm', 0)),
+                        "ctr": float(insight.get('ctr', 0))
+                    })
+            except Exception as e:
+                print(f"Erro ao buscar insights do anúncio {ad.get('id')}: {str(e)}")
+                continue
+
+        # Ordenar por CTR (melhores primeiro)
+        result.sort(key=lambda x: x['ctr'], reverse=True)
+
+        return result
+
+    except HTTPException:
+        raise
+    except Exception as e:
+        raise HTTPException(status_code=500, detail=f"Erro ao buscar anúncios: {str(e)}")
+
+
+@router.get("/insights/campaigns")
+async def get_insights_by_campaigns(
+    campaign_ids: str = Query(..., description="IDs de campanhas separados por vírgula"),
+    date_preset: str = Query("last_30d"),
+    db: Session = Depends(get_db)
+):
+    """
+    Retorna insights agregados de campanhas específicas.
+    Usado quando o usuário filtra por campanhas específicas.
+    """
+    try:
+        config = get_meta_config(db)
+        init_facebook_api(config.access_token)
+
+        campaign_id_list = campaign_ids.split(',')
+        
+        aggregated = {
+            "impressions": 0,
+            "clicks": 0,
+            "spend": 0,
+            "reach": 0,
+            "conversions": 0
+        }
+
+        for campaign_id in campaign_id_list:
+            campaign = Campaign(campaign_id.strip())
+            
+            try:
+                insights = campaign.get_insights(
+                    fields=['impressions', 'clicks', 'spend', 'reach', 'actions'],
+                    params={'date_preset': date_preset, 'level': 'campaign'}
+                )
+
+                if insights:
+                    insight = insights[0]
+                    aggregated["impressions"] += int(insight.get('impressions', 0))
+                    aggregated["clicks"] += int(insight.get('clicks', 0))
+                    aggregated["spend"] += float(insight.get('spend', 0))
+                    aggregated["reach"] += int(insight.get('reach', 0))
+                    
+                    if 'actions' in insight:
+                        for action in insight['actions']:
+                            if action['action_type'] in ['purchase', 'lead', 'complete_registration']:
+                                aggregated["conversions"] += int(action['value'])
+            except Exception as e:
+                print(f"Erro ao buscar insights da campanha {campaign_id}: {str(e)}")
+                continue
+
+        # Calcular médias
+        aggregated["cpc"] = aggregated["spend"] / aggregated["clicks"] if aggregated["clicks"] > 0 else 0
+        aggregated["cpm"] = (aggregated["spend"] / aggregated["impressions"] * 1000) if aggregated["impressions"] > 0 else 0
+        aggregated["ctr"] = (aggregated["clicks"] / aggregated["impressions"] * 100) if aggregated["impressions"] > 0 else 0
+
+        return aggregated
+
+    except HTTPException:
+        raise
+    except Exception as e:
+        raise HTTPException(status_code=500, detail=f"Erro ao buscar insights de campanhas: {str(e)}")
+
+
+@router.get("/insights/campaigns/daily")
+async def get_daily_insights_by_campaigns(
+    campaign_ids: str = Query(..., description="IDs de campanhas separados por vírgula"),
+    date_preset: str = Query("last_30d"),
+    db: Session = Depends(get_db)
+):
+    """
+    Retorna insights diários agregados de campanhas específicas para gráficos.
+    """
+    try:
+        config = get_meta_config(db)
+        init_facebook_api(config.access_token)
+
+        campaign_id_list = campaign_ids.split(',')
+        
+        # Dicionário para agregar por data
+        daily_data = {}
+
+        for campaign_id in campaign_id_list:
+            campaign = Campaign(campaign_id.strip())
+            
+            try:
+                insights = campaign.get_insights(
+                    fields=['impressions', 'clicks', 'spend', 'reach', 'cpc', 'cpm', 'ctr'],
+                    params={
+                        'date_preset': date_preset,
+                        'level': 'campaign',
+                        'time_increment': 1
+                    }
+                )
+
+                for insight in insights:
+                    date = insight.get('date_start')
+                    if date not in daily_data:
+                        daily_data[date] = {
+                            "date": date,
+                            "impressions": 0,
+                            "clicks": 0,
+                            "spend": 0,
+                            "reach": 0
+                        }
+                    
+                    daily_data[date]["impressions"] += int(insight.get('impressions', 0))
+                    daily_data[date]["clicks"] += int(insight.get('clicks', 0))
+                    daily_data[date]["spend"] += float(insight.get('spend', 0))
+                    daily_data[date]["reach"] += int(insight.get('reach', 0))
+                    
+            except Exception as e:
+                print(f"Erro ao buscar insights diários da campanha {campaign_id}: {str(e)}")
+                continue
+
+        # Converter para lista e calcular métricas
+        result = []
+        for date, data in daily_data.items():
+            data["cpc"] = data["spend"] / data["clicks"] if data["clicks"] > 0 else 0
+            data["cpm"] = (data["spend"] / data["impressions"] * 1000) if data["impressions"] > 0 else 0
+            data["ctr"] = (data["clicks"] / data["impressions"] * 100) if data["impressions"] > 0 else 0
+            result.append(data)
+
+        # Ordenar por data
+        result.sort(key=lambda x: x['date'])
+
+        return result
+
+    except HTTPException:
+        raise
+    except Exception as e:
+        raise HTTPException(status_code=500, detail=f"Erro ao buscar insights diários de campanhas: {str(e)}")

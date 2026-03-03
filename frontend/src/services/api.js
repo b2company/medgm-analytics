@@ -482,6 +482,31 @@ export const getMetaDailyInsights = async (datePreset = 'last_30d') => {
   return response.data;
 };
 
+export const getCampaignAds = async (campaignId) => {
+  const response = await api.get(`/meta/campaigns/${campaignId}/ads`);
+  return response.data;
+};
+
+export const getInsightsByCampaigns = async (campaignIds, datePreset = 'last_30d') => {
+  const response = await api.get('/meta/insights/campaigns', {
+    params: {
+      campaign_ids: campaignIds.join(','),
+      date_preset: datePreset
+    }
+  });
+  return response.data;
+};
+
+export const getDailyInsightsByCampaigns = async (campaignIds, datePreset = 'last_30d') => {
+  const response = await api.get('/meta/insights/campaigns/daily', {
+    params: {
+      campaign_ids: campaignIds.join(','),
+      date_preset: datePreset
+    }
+  });
+  return response.data;
+};
+
 // ============ FUNIL METRICS API ============
 
 // Quiz SE
