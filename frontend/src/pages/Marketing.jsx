@@ -5,7 +5,8 @@ import {
   deleteMetaConfig,
   getMetaCampaigns,
   getMetaInsightsSummary,
-  getMetaDailyInsights
+  getMetaDailyInsights,
+  getCampaignAds
 } from '../services/api';
 import { LineChart, Line, BarChart, Bar, XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer, Legend, ComposedChart } from 'recharts';
 import Modal from '../components/Modal';
@@ -68,7 +69,9 @@ function VendaDiretaTab() {
   const [campaigns, setCampaigns] = useState([]);
   const [insights, setInsights] = useState(null);
   const [dailyInsights, setDailyInsights] = useState([]);
+  const [ads, setAds] = useState([]);
   const [loading, setLoading] = useState(false);
+  const [loadingAds, setLoadingAds] = useState(false);
   const [datePreset, setDatePreset] = useState('last_30d');
   const [selectedCampaigns, setSelectedCampaigns] = useState([]);
 
@@ -81,6 +84,14 @@ function VendaDiretaTab() {
       loadData();
     }
   }, [config, datePreset, selectedCampaigns]);
+
+  useEffect(() => {
+    if (config && selectedCampaigns.length > 0) {
+      loadAds();
+    } else {
+      setAds([]);
+    }
+  }, [config, selectedCampaigns]);
 
   const checkConfig = async () => {
     setConfigLoading(true);
@@ -111,6 +122,22 @@ function VendaDiretaTab() {
       console.error('Erro ao carregar dados:', error);
     } finally {
       setLoading(false);
+    }
+  };
+
+  const loadAds = async () => {
+    setLoadingAds(true);
+    try {
+      const allAds = [];
+      for (const campaignId of selectedCampaigns) {
+        const campaignAds = await getCampaignAds(campaignId);
+        allAds.push(...campaignAds);
+      }
+      setAds(allAds);
+    } catch (error) {
+      console.error('Erro ao carregar anúncios:', error);
+    } finally {
+      setLoadingAds(false);
     }
   };
 
@@ -357,6 +384,85 @@ function VendaDiretaTab() {
                     </ResponsiveContainer>
                   </div>
                 </div>
+              </div>
+            </>
+          )}
+
+          {/* Análise por criativo */}
+          {selectedCampaigns.length > 0 && (
+            <>
+              <h2 className="text-lg font-semibold text-gray-800 mb-4">Análise por criativo</h2>
+              <div className="bg-white rounded-lg shadow-sm overflow-hidden mb-8">
+                <div className="overflow-x-auto">
+                  <table className="w-full">
+                    <thead className="bg-gray-50 border-b border-gray-200">
+                      <tr>
+                        <th className="px-4 py-3 text-left text-xs font-medium text-gray-600 uppercase">Criativo</th>
+                        <th className="px-4 py-3 text-left text-xs font-medium text-gray-600 uppercase">Status</th>
+                        <th className="px-4 py-3 text-right text-xs font-medium text-gray-600 uppercase">Valor Gasto</th>
+                        <th className="px-4 py-3 text-right text-xs font-medium text-gray-600 uppercase">Impressões</th>
+                        <th className="px-4 py-3 text-right text-xs font-medium text-gray-600 uppercase">Cliques</th>
+                        <th className="px-4 py-3 text-right text-xs font-medium text-gray-600 uppercase">CTR</th>
+                        <th className="px-4 py-3 text-right text-xs font-medium text-gray-600 uppercase">CPC</th>
+                        <th className="px-4 py-3 text-right text-xs font-medium text-gray-600 uppercase">CPM</th>
+                      </tr>
+                    </thead>
+                    <tbody className="divide-y divide-gray-200">
+                      {loadingAds ? (
+                        <tr>
+                          <td colSpan="8" className="px-4 py-8 text-center text-gray-500">
+                            Carregando anúncios...
+                          </td>
+                        </tr>
+                      ) : ads.length === 0 ? (
+                        <tr>
+                          <td colSpan="8" className="px-4 py-8 text-center text-gray-500">
+                            Nenhum anúncio encontrado para as campanhas selecionadas
+                          </td>
+                        </tr>
+                      ) : (
+                        ads.map((ad) => (
+                          <tr key={ad.id} className="hover:bg-gray-50">
+                            <td className="px-4 py-3 text-sm text-gray-900">
+                              <div className="font-medium max-w-xs truncate">{ad.name}</div>
+                              <div className="text-xs text-gray-500 mt-1">ID: {ad.id}</div>
+                            </td>
+                            <td className="px-4 py-3 text-sm">
+                              <span className={`px-2 py-1 text-xs font-medium rounded ${
+                                ad.status === 'ACTIVE' ? 'bg-green-100 text-green-800' :
+                                ad.status === 'PAUSED' ? 'bg-yellow-100 text-yellow-800' :
+                                'bg-gray-100 text-gray-800'
+                              }`}>
+                                {ad.status}
+                              </span>
+                            </td>
+                            <td className="px-4 py-3 text-sm text-gray-900 text-right">R$ {ad.spend.toFixed(2)}</td>
+                            <td className="px-4 py-3 text-sm text-gray-900 text-right">{ad.impressions.toLocaleString()}</td>
+                            <td className="px-4 py-3 text-sm text-gray-900 text-right">
+                              <div className="flex items-center justify-end gap-2">
+                                <div className="w-16 bg-gray-200 rounded-full h-2">
+                                  <div
+                                    className="bg-blue-500 h-2 rounded-full"
+                                    style={{ width: `${Math.min((ad.clicks / ad.impressions) * 100 * 10, 100)}%` }}
+                                  ></div>
+                                </div>
+                                <span>{ad.clicks}</span>
+                              </div>
+                            </td>
+                            <td className="px-4 py-3 text-sm text-gray-900 text-right">{ad.ctr.toFixed(2)}%</td>
+                            <td className="px-4 py-3 text-sm text-gray-900 text-right">R$ {ad.cpc.toFixed(2)}</td>
+                            <td className="px-4 py-3 text-sm text-gray-900 text-right">R$ {ad.cpm.toFixed(2)}</td>
+                          </tr>
+                        ))
+                      )}
+                    </tbody>
+                  </table>
+                </div>
+                {ads.length > 0 && (
+                  <div className="px-4 py-3 bg-gray-50 border-t border-gray-200 text-xs text-gray-600">
+                    Mostrando {ads.length} anúncios | Ordenados por melhor CTR
+                  </div>
+                )}
               </div>
             </>
           )}
