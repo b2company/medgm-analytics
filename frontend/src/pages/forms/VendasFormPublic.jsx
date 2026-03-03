@@ -60,7 +60,13 @@ const VendasFormPublic = () => {
     setMessage({ type: '', text: '' });
 
     try {
-      await axios.post(`${API_URL}/vendas`, formData);
+      // Garantir que a data seja enviada no formato correto (YYYY-MM-DD) sem conversão de timezone
+      const dataToSend = {
+        ...formData,
+        data: formData.data // Manter como string YYYY-MM-DD do input type="date"
+      };
+
+      await axios.post(`${API_URL}/vendas`, dataToSend);
       setMessage({ type: 'success', text: 'Venda registrada com sucesso!' });
 
       // Reset form

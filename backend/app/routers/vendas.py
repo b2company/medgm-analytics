@@ -2,15 +2,24 @@ from fastapi import APIRouter, HTTPException, Depends, Query
 from sqlalchemy.orm import Session
 from app.database import get_db
 from app.models.models import Venda, Financeiro
-from pydantic import BaseModel
+from pydantic import BaseModel, field_validator
 from typing import Optional
-from datetime import date
+from datetime import date, datetime
 
 router = APIRouter(prefix="/vendas", tags=["Vendas"])
 
 # Schemas
 class VendaCreate(BaseModel):
     data: date
+
+    @field_validator('data', mode='before')
+    @classmethod
+    def parse_date(cls, value):
+        """Parse date from string without timezone conversion"""
+        if isinstance(value, str):
+            # Parse YYYY-MM-DD string directly to date object
+            return datetime.strptime(value, '%Y-%m-%d').date()
+        return value
     cliente: Optional[str] = None
     closer: Optional[str] = None
     funil: Optional[str] = None
@@ -32,6 +41,17 @@ class VendaUpdate(BaseModel):
     previsto: Optional[float] = None
     valor_bruto: Optional[float] = None
     valor_liquido: Optional[float] = None
+
+    @field_validator('data', mode='before')
+    @classmethod
+    def parse_date(cls, value):
+        """Parse date from string without timezone conversion"""
+        if value is None:
+            return None
+        if isinstance(value, str):
+            # Parse YYYY-MM-DD string directly to date object
+            return datetime.strptime(value, '%Y-%m-%d').date()
+        return value
 
 
 # ============ CRUD ENDPOINTS ============

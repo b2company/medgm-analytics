@@ -7,8 +7,8 @@ from fastapi import APIRouter, Depends, HTTPException
 from sqlalchemy.orm import Session
 from app.database import get_db
 from app.models.models import Financeiro, Venda
-from pydantic import BaseModel
-from datetime import date
+from pydantic import BaseModel, field_validator
+from datetime import date, datetime
 from typing import Optional
 
 router = APIRouter(prefix="/crud", tags=["CRUD"])
@@ -25,6 +25,14 @@ class FinanceiroCreate(BaseModel):
     ano: int
     previsto_realizado: str  # previsto ou realizado
 
+    @field_validator('data', mode='before')
+    @classmethod
+    def parse_date(cls, value):
+        """Parse date from string without timezone conversion"""
+        if isinstance(value, str):
+            return datetime.strptime(value, '%Y-%m-%d').date()
+        return value
+
 class FinanceiroUpdate(BaseModel):
     tipo: Optional[str] = None
     categoria: Optional[str] = None
@@ -32,6 +40,16 @@ class FinanceiroUpdate(BaseModel):
     valor: Optional[float] = None
     data: Optional[date] = None
     previsto_realizado: Optional[str] = None
+
+    @field_validator('data', mode='before')
+    @classmethod
+    def parse_date(cls, value):
+        """Parse date from string without timezone conversion"""
+        if value is None:
+            return None
+        if isinstance(value, str):
+            return datetime.strptime(value, '%Y-%m-%d').date()
+        return value
 
 class VendaCreate(BaseModel):
     data: date
@@ -50,6 +68,14 @@ class VendaCreate(BaseModel):
     valor_pago: Optional[float] = None
     valor_liquido: Optional[float] = None
 
+    @field_validator('data', mode='before')
+    @classmethod
+    def parse_date(cls, value):
+        """Parse date from string without timezone conversion"""
+        if isinstance(value, str):
+            return datetime.strptime(value, '%Y-%m-%d').date()
+        return value
+
 class VendaUpdate(BaseModel):
     data: Optional[date] = None
     cliente: Optional[str] = None
@@ -64,6 +90,16 @@ class VendaUpdate(BaseModel):
     previsto: Optional[float] = None
     valor_pago: Optional[float] = None
     valor_liquido: Optional[float] = None
+
+    @field_validator('data', mode='before')
+    @classmethod
+    def parse_date(cls, value):
+        """Parse date from string without timezone conversion"""
+        if value is None:
+            return None
+        if isinstance(value, str):
+            return datetime.strptime(value, '%Y-%m-%d').date()
+        return value
 
 # ==================== FINANCEIRO CRUD ====================
 

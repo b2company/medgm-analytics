@@ -8,9 +8,9 @@ from sqlalchemy.orm import Session
 from sqlalchemy import func
 from app.database import get_db
 from app.models.models import SocialSellingMetrica, SDRMetrica, CloserMetrica, Meta, Pessoa
-from pydantic import BaseModel
+from pydantic import BaseModel, field_validator
 from typing import Optional, List, Dict, Any
-from datetime import date
+from datetime import date, datetime
 
 router = APIRouter(prefix="/comercial", tags=["Comercial"])
 
@@ -26,6 +26,16 @@ class SocialSellingCreate(BaseModel):
     leads_gerados: int
     # Metas agora vêm da tabela Meta
 
+    @field_validator('data', mode='before')
+    @classmethod
+    def parse_date(cls, value):
+        """Parse date from string without timezone conversion"""
+        if value is None:
+            return None
+        if isinstance(value, str):
+            return datetime.strptime(value, '%Y-%m-%d').date()
+        return value
+
 class SDRCreate(BaseModel):
     mes: int
     ano: int
@@ -36,6 +46,16 @@ class SDRCreate(BaseModel):
     reunioes_agendadas: int
     reunioes_realizadas: int
     # Metas agora vêm da tabela Meta
+
+    @field_validator('data', mode='before')
+    @classmethod
+    def parse_date(cls, value):
+        """Parse date from string without timezone conversion"""
+        if value is None:
+            return None
+        if isinstance(value, str):
+            return datetime.strptime(value, '%Y-%m-%d').date()
+        return value
 
 class CloserCreate(BaseModel):
     mes: int
@@ -52,6 +72,16 @@ class CloserCreate(BaseModel):
     faturamento_bruto: float = 0.0
     faturamento_liquido: float = 0.0
     # Metas agora vêm da tabela Meta
+
+    @field_validator('data', mode='before')
+    @classmethod
+    def parse_date(cls, value):
+        """Parse date from string without timezone conversion"""
+        if value is None:
+            return None
+        if isinstance(value, str):
+            return datetime.strptime(value, '%Y-%m-%d').date()
+        return value
 
 
 # ============ SOCIAL SELLING ============
