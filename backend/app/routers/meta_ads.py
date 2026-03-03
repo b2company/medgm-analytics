@@ -327,3 +327,53 @@ async def get_account_insights_summary(
         raise
     except Exception as e:
         raise HTTPException(status_code=500, detail=f"Erro ao buscar resumo de métricas: {str(e)}")
+
+@router.get("/insights/daily")
+async def get_daily_insights(
+    date_preset: str = Query("last_30d", description="today, yesterday, last_7d, last_30d, this_month"),
+    db: Session = Depends(get_db)
+):
+    """
+    Retorna métricas diárias agregadas para gráficos.
+    """
+    try:
+        config = get_meta_config(db)
+        init_facebook_api(config.access_token)
+
+        account = AdAccount(config.ad_account_id)
+
+        fields = [
+            'impressions', 'clicks', 'spend', 'reach',
+            'cpc', 'cpm', 'ctr'
+        ]
+
+        params = {
+            'date_preset': date_preset,
+            'level': 'account',
+            'time_increment': 1  # Dados diários
+        }
+
+        insights = account.get_insights(fields=fields, params=params)
+
+        result = []
+        for insight in insights:
+            result.append({
+                "date": insight.get('date_start'),
+                "impressions": int(insight.get('impressions', 0)),
+                "clicks": int(insight.get('clicks', 0)),
+                "spend": float(insight.get('spend', 0)),
+                "reach": int(insight.get('reach', 0)),
+                "cpc": float(insight.get('cpc', 0)),
+                "cpm": float(insight.get('cpm', 0)),
+                "ctr": float(insight.get('ctr', 0))
+            })
+
+        # Ordenar por data
+        result.sort(key=lambda x: x['date'])
+
+        return result
+
+    except HTTPException:
+        raise
+    except Exception as e:
+        raise HTTPException(status_code=500, detail=f"Erro ao buscar insights diários: {str(e)}")

@@ -4,7 +4,8 @@ import {
   createMetaConfig,
   deleteMetaConfig,
   getMetaCampaigns,
-  getMetaInsightsSummary
+  getMetaInsightsSummary,
+  getMetaDailyInsights
 } from '../services/api';
 import { LineChart, Line, BarChart, Bar, XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer, Legend } from 'recharts';
 import Modal from '../components/Modal';
@@ -20,6 +21,7 @@ const Marketing = () => {
 
   const [campaigns, setCampaigns] = useState([]);
   const [insights, setInsights] = useState(null);
+  const [dailyInsights, setDailyInsights] = useState([]);
   const [loading, setLoading] = useState(false);
   const [datePreset, setDatePreset] = useState('last_30d');
   const [statusFilter, setStatusFilter] = useState('ACTIVE');
@@ -52,12 +54,14 @@ const Marketing = () => {
   const loadData = async () => {
     setLoading(true);
     try {
-      const [campaignsData, insightsData] = await Promise.all([
+      const [campaignsData, insightsData, dailyData] = await Promise.all([
         getMetaCampaigns(statusFilter),
-        getMetaInsightsSummary(datePreset)
+        getMetaInsightsSummary(datePreset),
+        getMetaDailyInsights(datePreset)
       ]);
       setCampaigns(campaignsData);
       setInsights(insightsData);
+      setDailyInsights(dailyData);
     } catch (error) {
       console.error('Erro ao carregar dados:', error);
     } finally {
@@ -266,6 +270,96 @@ const Marketing = () => {
                 <KPICard title="CPC" value={`R$ ${insights.cpc.toFixed(2)}`} color="indigo" />
                 <KPICard title="CPM" value={`R$ ${insights.cpm.toFixed(2)}`} color="pink" />
                 <KPICard title="Conversões" value={insights.conversions || 0} color="orange" />
+              </div>
+            </>
+          )}
+
+          {/* Gráficos Dia a Dia */}
+          {dailyInsights.length > 0 && (
+            <>
+              <h2 className="text-xl font-bold text-gray-800 mb-4">📈 Tendências</h2>
+              <div className="grid grid-cols-1 lg:grid-cols-2 gap-6 mb-8">
+                {/* Gráfico de Gastos */}
+                <div className="bg-white rounded-lg shadow-sm p-6">
+                  <h3 className="text-lg font-semibold text-gray-800 mb-4">💰 Gastos por Dia</h3>
+                  <ResponsiveContainer width="100%" height={300}>
+                    <LineChart data={dailyInsights.map(d => ({
+                      ...d,
+                      date: new Date(d.date).toLocaleDateString('pt-BR', { day: '2-digit', month: '2-digit' })
+                    }))}>
+                      <CartesianGrid strokeDasharray="3 3" stroke="#e5e7eb" />
+                      <XAxis dataKey="date" tick={{ fontSize: 12 }} />
+                      <YAxis tick={{ fontSize: 12 }} />
+                      <Tooltip
+                        contentStyle={{ backgroundColor: '#fff', border: '1px solid #e5e7eb', borderRadius: '8px' }}
+                        formatter={(value) => `R$ ${value.toFixed(2)}`}
+                      />
+                      <Legend />
+                      <Line type="monotone" dataKey="spend" stroke="#3b82f6" strokeWidth={3} name="Gastos (R$)" dot={{ r: 4 }} />
+                    </LineChart>
+                  </ResponsiveContainer>
+                </div>
+
+                {/* Gráfico de Impressões e Cliques */}
+                <div className="bg-white rounded-lg shadow-sm p-6">
+                  <h3 className="text-lg font-semibold text-gray-800 mb-4">👁️ Impressões e Cliques</h3>
+                  <ResponsiveContainer width="100%" height={300}>
+                    <LineChart data={dailyInsights.map(d => ({
+                      ...d,
+                      date: new Date(d.date).toLocaleDateString('pt-BR', { day: '2-digit', month: '2-digit' })
+                    }))}>
+                      <CartesianGrid strokeDasharray="3 3" stroke="#e5e7eb" />
+                      <XAxis dataKey="date" tick={{ fontSize: 12 }} />
+                      <YAxis tick={{ fontSize: 12 }} />
+                      <Tooltip contentStyle={{ backgroundColor: '#fff', border: '1px solid #e5e7eb', borderRadius: '8px' }} />
+                      <Legend />
+                      <Line type="monotone" dataKey="impressions" stroke="#8b5cf6" strokeWidth={3} name="Impressões" dot={{ r: 4 }} />
+                      <Line type="monotone" dataKey="clicks" stroke="#10b981" strokeWidth={3} name="Cliques" dot={{ r: 4 }} />
+                    </LineChart>
+                  </ResponsiveContainer>
+                </div>
+
+                {/* Gráfico de CTR */}
+                <div className="bg-white rounded-lg shadow-sm p-6">
+                  <h3 className="text-lg font-semibold text-gray-800 mb-4">🎯 CTR por Dia</h3>
+                  <ResponsiveContainer width="100%" height={300}>
+                    <BarChart data={dailyInsights.map(d => ({
+                      ...d,
+                      date: new Date(d.date).toLocaleDateString('pt-BR', { day: '2-digit', month: '2-digit' })
+                    }))}>
+                      <CartesianGrid strokeDasharray="3 3" stroke="#e5e7eb" />
+                      <XAxis dataKey="date" tick={{ fontSize: 12 }} />
+                      <YAxis tick={{ fontSize: 12 }} />
+                      <Tooltip
+                        contentStyle={{ backgroundColor: '#fff', border: '1px solid #e5e7eb', borderRadius: '8px' }}
+                        formatter={(value) => `${value.toFixed(2)}%`}
+                      />
+                      <Legend />
+                      <Bar dataKey="ctr" fill="#f59e0b" name="CTR (%)" />
+                    </BarChart>
+                  </ResponsiveContainer>
+                </div>
+
+                {/* Gráfico de CPC */}
+                <div className="bg-white rounded-lg shadow-sm p-6">
+                  <h3 className="text-lg font-semibold text-gray-800 mb-4">💵 CPC por Dia</h3>
+                  <ResponsiveContainer width="100%" height={300}>
+                    <LineChart data={dailyInsights.map(d => ({
+                      ...d,
+                      date: new Date(d.date).toLocaleDateString('pt-BR', { day: '2-digit', month: '2-digit' })
+                    }))}>
+                      <CartesianGrid strokeDasharray="3 3" stroke="#e5e7eb" />
+                      <XAxis dataKey="date" tick={{ fontSize: 12 }} />
+                      <YAxis tick={{ fontSize: 12 }} />
+                      <Tooltip
+                        contentStyle={{ backgroundColor: '#fff', border: '1px solid #e5e7eb', borderRadius: '8px' }}
+                        formatter={(value) => `R$ ${value.toFixed(2)}`}
+                      />
+                      <Legend />
+                      <Line type="monotone" dataKey="cpc" stroke="#ec4899" strokeWidth={3} name="CPC (R$)" dot={{ r: 4 }} />
+                    </LineChart>
+                  </ResponsiveContainer>
+                </div>
               </div>
             </>
           )}
