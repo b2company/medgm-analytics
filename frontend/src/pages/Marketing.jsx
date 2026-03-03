@@ -467,14 +467,6 @@ function VendaDiretaTab() {
             </>
           )}
 
-          {/* Nota sobre dados de conversão */}
-          <div className="bg-yellow-50 border border-yellow-200 rounded-lg p-4 mb-6">
-            <p className="text-sm text-yellow-800">
-              <strong>Nota:</strong> Para métricas completas de vendas (Valor Retornado, ROAS, Funil de Vendas),
-              você precisa integrar com sua plataforma de e-commerce (Shopify, WooCommerce, etc.) ou
-              configurar conversões personalizadas no Meta Pixel.
-            </p>
-          </div>
         </>
       )}
     </div>
