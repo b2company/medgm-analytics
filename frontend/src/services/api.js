@@ -3,8 +3,8 @@ import axios from 'axios';
 // Usar variável de ambiente ou fallback HTTPS
 let API_URL = import.meta.env.VITE_API_URL || 'https://medgm-analytics-production.up.railway.app';
 
-// GARANTIR que sempre use HTTPS (proteção extra)
-if (API_URL.startsWith('http://')) {
+// GARANTIR que sempre use HTTPS (proteção extra) - exceto localhost
+if (API_URL.startsWith('http://') && !API_URL.includes('localhost') && !API_URL.includes('127.0.0.1')) {
   console.warn('⚠️ API_URL estava com HTTP, convertendo para HTTPS');
   API_URL = API_URL.replace('http://', 'https://');
 }
@@ -22,15 +22,17 @@ const api = axios.create({
   validateStatus: (status) => status >= 200 && status < 400
 });
 
-// Interceptor para garantir HTTPS (sem trailing slash)
+// Interceptor para garantir HTTPS (sem trailing slash) - exceto localhost
 api.interceptors.request.use((config) => {
-  // Forçar HTTPS no baseURL
-  if (config.baseURL && config.baseURL.startsWith('http://')) {
+  const isLocalhost = config.baseURL && (config.baseURL.includes('localhost') || config.baseURL.includes('127.0.0.1'));
+
+  // Forçar HTTPS no baseURL (exceto localhost)
+  if (config.baseURL && config.baseURL.startsWith('http://') && !isLocalhost) {
     config.baseURL = config.baseURL.replace('http://', 'https://');
   }
 
-  // Forçar HTTPS na URL
-  if (config.url && config.url.startsWith('http://')) {
+  // Forçar HTTPS na URL (exceto localhost)
+  if (config.url && config.url.startsWith('http://') && !isLocalhost) {
     config.url = config.url.replace('http://', 'https://');
   }
 
@@ -433,6 +435,95 @@ export const updateVenda = async (id, data) => {
 
 export const deleteVenda = async (id) => {
   const response = await api.delete(`/vendas/${id}`);
+  return response.data;
+};
+
+// ============ META ADS API ============
+
+export const getMetaConfig = async () => {
+  const response = await api.get('/meta/config');
+  return response.data;
+};
+
+export const createMetaConfig = async (data) => {
+  const response = await api.post('/meta/config', data);
+  return response.data;
+};
+
+export const deleteMetaConfig = async () => {
+  const response = await api.delete('/meta/config');
+  return response.data;
+};
+
+export const getMetaCampaigns = async (status = null) => {
+  const params = status ? { status } : {};
+  const response = await api.get('/meta/campaigns', { params });
+  return response.data;
+};
+
+export const getMetaCampaignInsights = async (campaignId, datePreset = 'last_30d') => {
+  const response = await api.get(`/meta/campaigns/${campaignId}/insights`, {
+    params: { date_preset: datePreset }
+  });
+  return response.data;
+};
+
+export const getMetaInsightsSummary = async (datePreset = 'last_30d') => {
+  const response = await api.get('/meta/insights/summary', {
+    params: { date_preset: datePreset }
+  });
+  return response.data;
+};
+
+// ============ FUNIL METRICS API ============
+
+// Quiz SE
+export const getQuizMetrics = async (mes = null, ano = null, campanha = null) => {
+  const params = {};
+  if (mes) params.mes = mes;
+  if (ano) params.ano = ano;
+  if (campanha) params.campanha = campanha;
+  const response = await api.get('/funil/quiz', { params });
+  return response.data;
+};
+
+export const createQuizMetrics = async (data) => {
+  const response = await api.post('/funil/quiz', data);
+  return response.data;
+};
+
+export const updateQuizMetrics = async (id, data) => {
+  const response = await api.put(`/funil/quiz/${id}`, data);
+  return response.data;
+};
+
+export const deleteQuizMetrics = async (id) => {
+  const response = await api.delete(`/funil/quiz/${id}`);
+  return response.data;
+};
+
+// Venda Direta
+export const getVendaDiretaMetrics = async (mes = null, ano = null, campanha = null) => {
+  const params = {};
+  if (mes) params.mes = mes;
+  if (ano) params.ano = ano;
+  if (campanha) params.campanha = campanha;
+  const response = await api.get('/funil/venda-direta', { params });
+  return response.data;
+};
+
+export const createVendaDiretaMetrics = async (data) => {
+  const response = await api.post('/funil/venda-direta', data);
+  return response.data;
+};
+
+export const updateVendaDiretaMetrics = async (id, data) => {
+  const response = await api.put(`/funil/venda-direta/${id}`, data);
+  return response.data;
+};
+
+export const deleteVendaDiretaMetrics = async (id) => {
+  const response = await api.delete(`/funil/venda-direta/${id}`);
   return response.data;
 };
 

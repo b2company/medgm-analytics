@@ -18,6 +18,9 @@ const Metas = lazy(() => import('./pages/Metas'));
 const Planejamento = lazy(() => import('./pages/Planejamento'));
 const DFC = lazy(() => import('./pages/DFC'));
 const DRE = lazy(() => import('./pages/DRE'));
+const Marketing = lazy(() => import('./pages/Marketing'));
+const QuizSE = lazy(() => import('./pages/QuizSE'));
+const VendaDireta = lazy(() => import('./pages/VendaDireta'));
 
 // Formulários públicos com lazy loading
 const SocialSellingFormPublic = lazy(() => import('./pages/forms/SocialSellingFormPublic'));
@@ -67,6 +70,9 @@ function App() {
                     <Route path="/" element={<Navigate to="/comercial" replace />} />
                     <Route path="/comercial" element={<Comercial />} />
                     <Route path="/financeiro" element={<Financeiro />} />
+                    <Route path="/marketing" element={<Marketing />} />
+                    <Route path="/quiz-se" element={<QuizSE />} />
+                    <Route path="/venda-direta" element={<VendaDireta />} />
                     <Route path="/config" element={<Config />} />
 
                     {/* Rotas antigas mantidas para compatibilidade */}

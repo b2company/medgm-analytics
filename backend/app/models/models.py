@@ -400,3 +400,89 @@ class InvestimentoTrafego(Base):
 
     def __repr__(self):
         return f"<InvestimentoTrafego(id={self.id}, ano={self.ano}, mes={self.mes}, budget={self.budget})>"
+
+
+class MetaAdsConfig(Base):
+    """
+    Configurações de integração com Meta Marketing API.
+    Armazena token de acesso e ID da conta de anúncios.
+    """
+    __tablename__ = "meta_ads_config"
+
+    id = Column(Integer, primary_key=True, index=True, autoincrement=True)
+    access_token = Column(Text, nullable=False)  # Token de acesso do Meta
+    ad_account_id = Column(String(50), nullable=False)  # ID da conta de anúncios (act_XXXXX)
+    ad_account_name = Column(String(255), nullable=True)  # Nome da conta de anúncios
+    status = Column(String(20), nullable=False, default='active')  # active, inactive
+    last_sync = Column(DateTime, nullable=True)  # Última sincronização bem-sucedida
+
+    created_at = Column(DateTime, server_default=func.now())
+    updated_at = Column(DateTime, server_default=func.now(), onupdate=func.now())
+
+    def __repr__(self):
+        return f"<MetaAdsConfig(id={self.id}, ad_account_id='{self.ad_account_id}', status='{self.status}')>"
+
+
+class QuizMetrics(Base):
+    """
+    Métricas de funil Quiz SE (Squeeze Page com Quiz).
+    Armazena métricas de campanha + conversão.
+    """
+    __tablename__ = "quiz_metrics"
+
+    id = Column(Integer, primary_key=True, index=True, autoincrement=True)
+    data = Column(Date, nullable=False, index=True)
+    campanha_nome = Column(String(255), nullable=False)  # Nome da campanha
+    campanha_id = Column(String(100), nullable=True)  # ID da campanha no Meta (opcional)
+    mes = Column(Integer, nullable=False, index=True)
+    ano = Column(Integer, nullable=False, index=True)
+
+    # Métricas de Ads (podem vir do Meta Ads API ou inserção manual)
+    verba = Column(Float, nullable=False, default=0)  # Spend
+    impressoes = Column(Integer, nullable=False, default=0)
+    cliques = Column(Integer, nullable=False, default=0)
+
+    # Métricas de Conversão (inserção manual)
+    pageviews = Column(Integer, nullable=False, default=0)
+    quiz_inicio = Column(Integer, nullable=False, default=0)
+    quiz_end = Column(Integer, nullable=False, default=0)
+    leads = Column(Integer, nullable=False, default=0)
+
+    created_at = Column(DateTime, server_default=func.now())
+    updated_at = Column(DateTime, server_default=func.now(), onupdate=func.now())
+
+    def __repr__(self):
+        return f"<QuizMetrics(id={self.id}, campanha='{self.campanha_nome}', data={self.data}, leads={self.leads})>"
+
+
+class VendaDiretaMetrics(Base):
+    """
+    Métricas de funil Venda Direta.
+    Armazena métricas de campanha + conversão + vendas.
+    """
+    __tablename__ = "venda_direta_metrics"
+
+    id = Column(Integer, primary_key=True, index=True, autoincrement=True)
+    data = Column(Date, nullable=False, index=True)
+    campanha_nome = Column(String(255), nullable=False)  # Nome da campanha
+    campanha_id = Column(String(100), nullable=True)  # ID da campanha no Meta (opcional)
+    mes = Column(Integer, nullable=False, index=True)
+    ano = Column(Integer, nullable=False, index=True)
+
+    # Métricas de Ads
+    verba = Column(Float, nullable=False, default=0)  # Spend
+    impressoes = Column(Integer, nullable=False, default=0)
+    cliques = Column(Integer, nullable=False, default=0)
+
+    # Métricas de Conversão
+    pageviews = Column(Integer, nullable=False, default=0)
+    leads = Column(Integer, nullable=False, default=0)
+    checkout_inicio = Column(Integer, nullable=False, default=0)
+    vendas = Column(Integer, nullable=False, default=0)
+    receita = Column(Float, nullable=False, default=0)
+
+    created_at = Column(DateTime, server_default=func.now())
+    updated_at = Column(DateTime, server_default=func.now(), onupdate=func.now())
+
+    def __repr__(self):
+        return f"<VendaDiretaMetrics(id={self.id}, campanha='{self.campanha_nome}', data={self.data}, vendas={self.vendas})>"
