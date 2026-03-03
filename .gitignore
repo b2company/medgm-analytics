@@ -32,3 +32,4 @@ backend.log
 # Temporary
 *.tmp
 .cache/
+frontend/.env.local
