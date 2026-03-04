@@ -497,6 +497,29 @@ export const getInsightsByCampaigns = async (campaignIds, datePreset = 'last_30d
   return response.data;
 };
 
+// ==================== Google Sheets API ====================
+
+export const syncGoogleSheetsMetrics = async () => {
+  const response = await api.get('/google-sheets/sync-metrics');
+  return response.data;
+};
+
+export const getCapturaLeadMetrics = async (mes = null, ano = null) => {
+  const params = {};
+  if (mes) params.mes = mes;
+  if (ano) params.ano = ano;
+  const response = await api.get('/google-sheets/captura-lead', { params });
+  return response.data;
+};
+
+export const getVendaDiretaMetrics = async (mes = null, ano = null) => {
+  const params = {};
+  if (mes) params.mes = mes;
+  if (ano) params.ano = ano;
+  const response = await api.get('/google-sheets/venda-direta', { params });
+  return response.data;
+};
+
 export const getDailyInsightsByCampaigns = async (campaignIds, datePreset = 'last_30d') => {
   const response = await api.get('/meta/insights/campaigns/daily', {
     params: {
