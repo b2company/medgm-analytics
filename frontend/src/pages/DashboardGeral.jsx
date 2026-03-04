@@ -63,11 +63,14 @@ const DashboardGeral = ({ mes, ano }) => {
       dadosPorDia[d.dia] = d;
     });
 
-    // Pegar último valor conhecido para usar como referência
+    // Calcular meta diária baseado no primeiro dia com dados
+    // A meta acumulada é linear: meta_dia_N = metaDiaria * N
+    const primeiroDiaComDados = dadosAcumulados[0];
+    const metaDiaria = primeiroDiaComDados.meta / primeiroDiaComDados.dia;
+
+    // Pegar último valor conhecido para o realizado
     const ultimoDiaComDados = Math.max(...dadosAcumulados.map(d => d.dia));
     const ultimoValorRealizado = dadosAcumulados.find(d => d.dia === ultimoDiaComDados)?.realizado || 0;
-    const metaTotal = dadosAcumulados.find(d => d.dia === ultimoDiaComDados)?.meta || 0;
-    const metaDiaria = metaTotal / totalDiasNoMes;
 
     const resultado = [];
 
@@ -81,7 +84,7 @@ const DashboardGeral = ({ mes, ano }) => {
         resultado.push({
           dia: dia,
           realizado: dia <= ultimoDiaComDados ? ultimoValorRealizado : null, // Mantém último valor até o último dia com dados
-          meta: metaDiaria * dia
+          meta: metaDiaria * dia // Meta linear até o final do mês
         });
       }
     }
