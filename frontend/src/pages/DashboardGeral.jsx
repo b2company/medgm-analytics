@@ -50,6 +50,45 @@ const DashboardGeral = ({ mes, ano }) => {
     return ((valorAtual - valorAnterior) / valorAnterior) * 100;
   };
 
+  // Função para preencher todos os dias do mês nos dados acumulados
+  const preencherDiasMes = (dadosAcumulados, mes, ano) => {
+    if (!dadosAcumulados || dadosAcumulados.length === 0) return [];
+
+    // Calcular número total de dias no mês
+    const totalDiasNoMes = new Date(ano, mes, 0).getDate();
+
+    // Criar objeto de lookup para dados existentes
+    const dadosPorDia = {};
+    dadosAcumulados.forEach(d => {
+      dadosPorDia[d.dia] = d;
+    });
+
+    // Pegar último valor conhecido para usar como referência
+    const ultimoDiaComDados = Math.max(...dadosAcumulados.map(d => d.dia));
+    const ultimoValorRealizado = dadosAcumulados.find(d => d.dia === ultimoDiaComDados)?.realizado || 0;
+    const metaTotal = dadosAcumulados.find(d => d.dia === ultimoDiaComDados)?.meta || 0;
+    const metaDiaria = metaTotal / totalDiasNoMes;
+
+    const resultado = [];
+
+    // Iterar por TODOS os dias do mês
+    for (let dia = 1; dia <= totalDiasNoMes; dia++) {
+      if (dadosPorDia[dia]) {
+        // Dia com dados - usar os dados reais
+        resultado.push(dadosPorDia[dia]);
+      } else {
+        // Dia sem dados - adicionar só a meta
+        resultado.push({
+          dia: dia,
+          realizado: dia <= ultimoDiaComDados ? ultimoValorRealizado : null, // Mantém último valor até o último dia com dados
+          meta: metaDiaria * dia
+        });
+      }
+    }
+
+    return resultado;
+  };
+
   if (loading) {
     return (
       <div className="flex justify-center items-center h-96">
@@ -328,7 +367,7 @@ const DashboardGeral = ({ mes, ano }) => {
             info="Progresso acumulado de vendas ao longo do mês. A linha azul mostra as vendas reais, e a linha cinza tracejada mostra a meta proporcional ao dia."
           >
             <ResponsiveContainer width="100%" height={350}>
-              <LineChart data={comercial.acumulado_vendas}>
+              <LineChart data={preencherDiasMes(comercial.acumulado_vendas, mes, ano)}>
                 <CartesianGrid strokeDasharray="3 3" stroke="#e5e7eb" />
                 <XAxis
                   dataKey="dia"
@@ -375,7 +414,7 @@ const DashboardGeral = ({ mes, ano }) => {
             info="Progresso acumulado do faturamento bruto ao longo do mês. Permite visualizar se o ritmo de vendas + ticket médio estão alinhados com a meta financeira."
           >
             <ResponsiveContainer width="100%" height={350}>
-              <LineChart data={comercial.acumulado_faturamento}>
+              <LineChart data={preencherDiasMes(comercial.acumulado_faturamento, mes, ano)}>
                 <CartesianGrid strokeDasharray="3 3" stroke="#e5e7eb" />
                 <XAxis
                   dataKey="dia"
