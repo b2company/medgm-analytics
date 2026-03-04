@@ -451,6 +451,7 @@ const SDR = ({ mes: mesProp, ano: anoProp }) => {
             progressPercent={dashboardDiario.totais.tx_agendamento}
             trend={dashboardMesAnterior?.totais ? calcularTrend(dashboardDiario.totais.tx_agendamento, dashboardMesAnterior.totais.tx_agendamento) : null}
             info="Percentual de leads que aceitaram agendar uma reunião. Quanto maior, melhor a qualificação e abordagem do SDR."
+            hideMetaLabel={true}
           />
           <KPICardWithProgress
             title="Tx Comparecimento"
@@ -461,6 +462,7 @@ const SDR = ({ mes: mesProp, ano: anoProp }) => {
             progressPercent={(dashboardDiario.totais.tx_comparecimento / 80) * 100}
             trend={dashboardMesAnterior?.totais ? calcularTrend(dashboardDiario.totais.tx_comparecimento, dashboardMesAnterior.totais.tx_comparecimento) : null}
             info="Percentual de leads que compareceram às reuniões agendadas. Taxa baixa pode indicar problema na qualificação ou confirmação. Meta: 80%"
+            hideMetaLabel={true}
           />
         </div>
       )}

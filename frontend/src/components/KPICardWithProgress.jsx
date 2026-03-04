@@ -11,7 +11,8 @@ const KPICardWithProgress = ({
   progressPercent = null,
   info = null,
   icon = null,
-  trend = null
+  trend = null,
+  hideMetaLabel = false
 }) => {
   // Calcular percentual se não fornecido
   const percent = progressPercent !== null
@@ -67,8 +68,10 @@ const KPICardWithProgress = ({
       {showProgress && meta && (
         <div className="space-y-1.5 mt-auto">
           <div className="flex items-center justify-between gap-2">
-            <span className="text-sm md:text-xs text-gray-500 truncate">Meta: {formatter(meta)}</span>
-            <span className={`text-sm md:text-xs font-bold ${textColor} flex-shrink-0`}>
+            {!hideMetaLabel && (
+              <span className="text-sm md:text-xs text-gray-500 truncate">Meta: {formatter(meta)}</span>
+            )}
+            <span className={`text-sm md:text-xs font-bold ${textColor} ${hideMetaLabel ? 'ml-auto' : 'flex-shrink-0'}`}>
               {percent.toFixed(0)}%
             </span>
           </div>
