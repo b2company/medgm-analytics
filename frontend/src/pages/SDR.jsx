@@ -95,8 +95,6 @@ const SDR = ({ mes: mesProp, ano: anoProp }) => {
 
   const fetchDashboardDiario = async () => {
     try {
-      setLoading(true); // Mostrar loading quando filtros mudarem
-
       const params = new URLSearchParams({
         mes: mesAno.mes,
         ano: mesAno.ano
@@ -165,8 +163,6 @@ const SDR = ({ mes: mesProp, ano: anoProp }) => {
       }
     } catch (error) {
       console.error('Erro ao buscar dashboard diário:', error);
-    } finally {
-      setLoading(false);
     }
   };
 
