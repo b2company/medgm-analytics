@@ -95,6 +95,8 @@ const SDR = ({ mes: mesProp, ano: anoProp }) => {
 
   const fetchDashboardDiario = async () => {
     try {
+      setLoading(true); // Mostrar loading quando filtros mudarem
+
       const params = new URLSearchParams({
         mes: mesAno.mes,
         ano: mesAno.ano
@@ -149,13 +151,22 @@ const SDR = ({ mes: mesProp, ano: anoProp }) => {
       setDashboardMesAnterior(sdrMesAnteriorData);
       setCloserDiario(closerData);
 
-      // Extrair funis disponíveis do breakdown_funil
-      if (sdrData.breakdown_funil && sdrData.breakdown_funil.length > 0) {
-        const funis = sdrData.breakdown_funil.map(item => item.funil);
+      // Extrair funis disponíveis do breakdown_funil - buscar sem filtro para ter lista completa
+      const paramsAllFunis = new URLSearchParams({
+        mes: mesAno.mes,
+        ano: mesAno.ano
+      });
+      const allFunisResponse = await fetch(`${API_URL}/comercial/dashboard/sdr-diario?${paramsAllFunis}`);
+      const allFunisData = await allFunisResponse.json();
+
+      if (allFunisData.breakdown_funil && allFunisData.breakdown_funil.length > 0) {
+        const funis = allFunisData.breakdown_funil.map(item => item.funil);
         setFunisDisponiveis(funis);
       }
     } catch (error) {
       console.error('Erro ao buscar dashboard diário:', error);
+    } finally {
+      setLoading(false);
     }
   };
 
@@ -439,7 +450,7 @@ const SDR = ({ mes: mesProp, ano: anoProp }) => {
 
       {/* LINHA 2 - Funil de Conversão */}
       {dashboardDiario && dashboardDiario.totais && (
-        <div className="mb-6">
+        <div className="mb-6" key={`funil-${filtroSDR}-${filtroFunil}-${mesAno.mes}-${mesAno.ano}`}>
           <HorizontalFunnel
             title="Funil de Conversão SDR"
             stages={[
@@ -467,13 +478,14 @@ const SDR = ({ mes: mesProp, ano: anoProp }) => {
 
       {/* LINHA 3 - Grid com 2 gráficos */}
       {dashboardDiario && dashboardDiario.dados_diarios && dashboardDiario.dados_diarios.length > 0 && (
-        <div className="grid grid-cols-1 lg:grid-cols-2 gap-6 mb-6">
+        <div className="grid grid-cols-1 lg:grid-cols-2 gap-6 mb-6" key={`graficos-${filtroSDR}-${filtroFunil}-${mesAno.mes}-${mesAno.ano}`}>
           {/* Gráfico 1: Atividade do SDR */}
           <ExpandableCard
             title="Atividade do SDR - Dia a Dia"
             info="Leads recebidos pelo SDR e reuniões que ele agendou naquele dia. A linha mostra a taxa de agendamento do dia."
           >
             <ComboChartWithLine
+              key={`atividade-${filtroSDR}-${filtroFunil}`}
               data={dashboardDiario.dados_diarios.map(d => ({
                 name: `${d.dia}`,
                 'Leads Recebidos': d.leads_recebidos || 0,
@@ -502,6 +514,7 @@ const SDR = ({ mes: mesProp, ano: anoProp }) => {
               info="Calls que estavam agendadas PARA aquele dia vs calls que foram efetivamente realizadas. A linha mostra a taxa de comparecimento real."
             >
               <ComboChartWithLine
+                key={`comparecimento-${filtroSDR}-${filtroFunil}`}
                 data={closerDiario.dados_diarios.map(d => ({
                   name: `${d.dia}`,
                   'Calls Agendadas': d.calls_agendadas || 0,
@@ -528,13 +541,14 @@ const SDR = ({ mes: mesProp, ano: anoProp }) => {
 
       {/* LINHA 4 - Grid 2 colunas */}
       {dashboardDiario && dashboardDiario.dados_diarios && dashboardDiario.dados_diarios.length > 0 && (
-        <div className="grid grid-cols-1 lg:grid-cols-2 gap-6 mb-6">
+        <div className="grid grid-cols-1 lg:grid-cols-2 gap-6 mb-6" key={`linha4-${filtroSDR}-${filtroFunil}-${mesAno.mes}-${mesAno.ano}`}>
           {/* Coluna esquerda: Progresso Acumulado */}
           <ExpandableCard
             title="Progresso Acumulado vs Meta"
             info="Mostra se o ritmo de reuniões realizadas está no caminho certo para bater a meta mensal. A área sombreada indica o gap entre realizado e meta."
           >
             <CumulativeLineChart
+              key={`acumulado-${filtroSDR}-${filtroFunil}`}
               data={calcularAcumulado(
                 dashboardDiario.dados_diarios,
                 'reunioes_realizadas',
@@ -555,6 +569,7 @@ const SDR = ({ mes: mesProp, ano: anoProp }) => {
               info="Performance detalhada por origem de lead (Social Selling, Quiz, Indicação, Webinário). As cores indicam: Verde (>80%), Amarelo (40-80%), Vermelho (<40%)."
             >
               <FunnelTable
+                key={`tabela-funil-${filtroSDR}-${filtroFunil}`}
                 data={dashboardDiario.breakdown_funil}
                 type="sdr"
               />
