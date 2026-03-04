@@ -831,11 +831,13 @@ async def dashboard_sdr_diario(
     mes: int,
     ano: int,
     sdr: Optional[str] = None,
+    funil: Optional[str] = None,
     db: Session = Depends(get_db)
 ):
     """
     Dashboard dia a dia de SDR com metas da tabela Meta.
     Retorna dados por dia com meta diária e realizado.
+    Suporta filtros por SDR e/ou Funil.
     """
     try:
         from calendar import monthrange
@@ -850,6 +852,9 @@ async def dashboard_sdr_diario(
 
         if sdr:
             query = query.filter(SDRMetrica.sdr == sdr)
+
+        if funil:
+            query = query.filter(SDRMetrica.funil == funil)
 
         metricas = query.all()
 
