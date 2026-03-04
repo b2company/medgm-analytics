@@ -75,7 +75,7 @@ def parse_percentage(value_str):
         return 0.0
 
 
-def parse_date(date_str, year=2025):
+def parse_date(date_str, year=None):
     """Converte string de data DD/M para objeto datetime"""
     if not date_str or date_str.strip() == "":
         return None
@@ -83,6 +83,9 @@ def parse_date(date_str, year=2025):
         parts = date_str.split("/")
         day = int(parts[0])
         month = int(parts[1])
+        # Se o ano não for especificado, usa o ano atual
+        if year is None:
+            year = datetime.now().year
         return datetime(year, month, day)
     except:
         return None

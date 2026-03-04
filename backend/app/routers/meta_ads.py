@@ -509,13 +509,13 @@ async def get_daily_insights_by_campaigns(
         init_facebook_api(config.access_token)
 
         campaign_id_list = campaign_ids.split(',')
-        
+
         # Dicionário para agregar por data
         daily_data = {}
 
         for campaign_id in campaign_id_list:
             campaign = Campaign(campaign_id.strip())
-            
+
             try:
                 insights = campaign.get_insights(
                     fields=['impressions', 'clicks', 'spend', 'reach', 'cpc', 'cpm', 'ctr'],
@@ -536,12 +536,12 @@ async def get_daily_insights_by_campaigns(
                             "spend": 0,
                             "reach": 0
                         }
-                    
+
                     daily_data[date]["impressions"] += int(insight.get('impressions', 0))
                     daily_data[date]["clicks"] += int(insight.get('clicks', 0))
                     daily_data[date]["spend"] += float(insight.get('spend', 0))
                     daily_data[date]["reach"] += int(insight.get('reach', 0))
-                    
+
             except Exception as e:
                 print(f"Erro ao buscar insights diários da campanha {campaign_id}: {str(e)}")
                 continue
@@ -563,3 +563,188 @@ async def get_daily_insights_by_campaigns(
         raise
     except Exception as e:
         raise HTTPException(status_code=500, detail=f"Erro ao buscar insights diários de campanhas: {str(e)}")
+
+
+# ============ ANÁLISE DETALHADA (CRIATIVOS E CAMPANHAS) ============
+
+@router.get("/ads/performance")
+async def get_ads_performance(
+    date_preset: str = Query("last_30d", description="today, yesterday, last_7d, last_30d, this_month"),
+    campaign_ids: Optional[str] = Query(None, description="IDs de campanhas separados por vírgula (opcional)"),
+    limit: int = Query(10, description="Número máximo de anúncios a retornar"),
+    db: Session = Depends(get_db)
+):
+    """
+    Retorna análise detalhada de performance por criativo (anúncio).
+    Inclui: nome, status, link, valor gasto, conversões, ROAS, etc.
+
+    OTIMIZADO: Busca insights a nível de conta com breakdown por anúncio (muito mais rápido).
+    """
+    try:
+        config = get_meta_config(db)
+        init_facebook_api(config.access_token)
+
+        account = AdAccount(config.ad_account_id)
+
+        # Buscar insights agregados a nível de conta, com breakdown por ad
+        # Isso é MUITO mais rápido do que buscar individualmente
+        params = {
+            'date_preset': date_preset,
+            'level': 'ad',
+            'limit': limit,
+            'sort': ['spend_descending']  # Ordenar por gasto (maiores primeiro)
+        }
+
+        if campaign_ids:
+            params['filtering'] = [{
+                'field': 'campaign.id',
+                'operator': 'IN',
+                'value': campaign_ids.split(',')
+            }]
+
+        insights = account.get_insights(
+            fields=[
+                'ad_id', 'ad_name', 'campaign_id', 'campaign_name',
+                'impressions', 'clicks', 'spend', 'reach',
+                'cpc', 'cpm', 'ctr', 'actions', 'action_values'
+            ],
+            params=params
+        )
+
+        all_ads = []
+
+        for insight in insights:
+            # Extrair conversões e receita
+            conversions = 0
+            revenue = 0.0
+
+            if 'actions' in insight:
+                for action in insight['actions']:
+                    if action['action_type'] in ['purchase', 'offsite_conversion.fb_pixel_purchase']:
+                        conversions += int(action['value'])
+
+            if 'action_values' in insight:
+                for action_value in insight['action_values']:
+                    if action_value['action_type'] in ['purchase', 'offsite_conversion.fb_pixel_purchase']:
+                        revenue += float(action_value['value'])
+
+            spend = float(insight.get('spend', 0))
+            roas = revenue / spend if spend > 0 else 0
+            cpa = spend / conversions if conversions > 0 else 0
+
+            all_ads.append({
+                "id": insight.get('ad_id'),
+                "name": insight.get('ad_name'),
+                "campaign_name": insight.get('campaign_name'),
+                "status": "ACTIVE",  # Status vem do insight, não do ad object
+                "post_link": None,  # Não temos o post_id no insight agregado
+                "valor_gasto": spend,
+                "impressoes": int(insight.get('impressions', 0)),
+                "cliques": int(insight.get('clicks', 0)),
+                "conversoes": conversions,
+                "receita": revenue,
+                "cpa": cpa,
+                "roas": roas,
+                "cpc": float(insight.get('cpc', 0)),
+                "cpm": float(insight.get('cpm', 0)),
+                "ctr": float(insight.get('ctr', 0))
+            })
+
+        return {
+            "total_ads": len(all_ads),
+            "ads": all_ads
+        }
+
+    except HTTPException:
+        raise
+    except Exception as e:
+        raise HTTPException(status_code=500, detail=f"Erro ao buscar performance de anúncios: {str(e)}")
+
+
+@router.get("/campaigns/performance")
+async def get_campaigns_performance(
+    date_preset: str = Query("last_30d", description="today, yesterday, last_7d, last_30d, this_month"),
+    db: Session = Depends(get_db)
+):
+    """
+    Retorna análise detalhada de performance por campanha/público.
+    Similar à análise por público do relatório.
+    """
+    try:
+        config = get_meta_config(db)
+        init_facebook_api(config.access_token)
+
+        account = AdAccount(config.ad_account_id)
+
+        # Buscar todas as campanhas
+        campaigns = account.get_campaigns(
+            fields=['id', 'name', 'status', 'effective_status'],
+            params={'effective_status': ['ACTIVE', 'PAUSED', 'ARCHIVED']}
+        )
+
+        campaign_data = []
+
+        for campaign in campaigns:
+            try:
+                # Buscar insights da campanha
+                insights = campaign.get_insights(
+                    fields=[
+                        'impressions', 'clicks', 'spend', 'reach',
+                        'cpc', 'cpm', 'ctr', 'actions', 'action_values'
+                    ],
+                    params={'date_preset': date_preset, 'level': 'campaign'}
+                )
+
+                if insights and len(insights) > 0:
+                    insight = insights[0]
+
+                    # Extrair conversões e receita
+                    conversions = 0
+                    revenue = 0.0
+
+                    if 'actions' in insight:
+                        for action in insight['actions']:
+                            if action['action_type'] in ['purchase', 'offsite_conversion.fb_pixel_purchase', 'lead']:
+                                conversions += int(action['value'])
+
+                    if 'action_values' in insight:
+                        for action_value in insight['action_values']:
+                            if action_value['action_type'] in ['purchase', 'offsite_conversion.fb_pixel_purchase']:
+                                revenue += float(action_value['value'])
+
+                    spend = float(insight.get('spend', 0))
+                    roas = revenue / spend if spend > 0 else 0
+                    cpa = spend / conversions if conversions > 0 else 0
+
+                    campaign_data.append({
+                        "id": campaign.get('id'),
+                        "name": campaign.get('name'),
+                        "status": campaign.get('effective_status'),
+                        "valor_gasto": spend,
+                        "impressoes": int(insight.get('impressions', 0)),
+                        "cliques": int(insight.get('clicks', 0)),
+                        "conversoes": conversions,
+                        "receita": revenue,
+                        "cpa": cpa,
+                        "roas": roas,
+                        "cpc": float(insight.get('cpc', 0)),
+                        "cpm": float(insight.get('cpm', 0)),
+                        "ctr": float(insight.get('ctr', 0))
+                    })
+
+            except Exception as e:
+                print(f"Erro ao processar campanha {campaign.get('id')}: {str(e)}")
+                continue
+
+        # Ordenar por valor gasto (maior primeiro)
+        campaign_data.sort(key=lambda x: x['valor_gasto'], reverse=True)
+
+        return {
+            "total_campaigns": len(campaign_data),
+            "campaigns": campaign_data
+        }
+
+    except HTTPException:
+        raise
+    except Exception as e:
+        raise HTTPException(status_code=500, detail=f"Erro ao buscar performance de campanhas: {str(e)}")

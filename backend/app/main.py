@@ -10,6 +10,7 @@ import os
 
 from app.database import init_db
 from app.routers import upload, metrics, crud, comercial, config, export, import_csv, funil, metas, demonstrativos, projecao, vendas, meta_ads, funil_metrics, google_sheets
+from app.scheduler import start_scheduler, stop_scheduler
 
 # Carrega variáveis de ambiente
 load_dotenv()
@@ -81,11 +82,22 @@ app.include_router(google_sheets.router)
 @app.on_event("startup")
 async def startup_event():
     """
-    Initialize database on startup.
+    Initialize database and scheduler on startup.
     """
     print("Starting MedGM Analytics API...")
     init_db()
+    start_scheduler()  # Inicia sincronização automática do Google Sheets
     print("API ready!")
+
+
+@app.on_event("shutdown")
+async def shutdown_event():
+    """
+    Cleanup on shutdown.
+    """
+    print("Stopping scheduler...")
+    stop_scheduler()
+    print("API stopped!")
 
 
 @app.get("/health")

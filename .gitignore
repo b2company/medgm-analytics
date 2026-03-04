@@ -8,6 +8,10 @@ __pycache__/
 .env
 *.env
 
+# Google Credentials (sensitive)
+google-credentials.json
+backend/google-credentials.json
+
 # Database
 *.db
 *.sqlite

@@ -14,7 +14,7 @@ console.log('🔒 Protocolo:', API_URL.split('://')[0]);
 
 const api = axios.create({
   baseURL: API_URL,  // SEM trailing slash para evitar redirects 307
-  timeout: 30000,
+  timeout: 120000,  // 2 minutos para Meta Ads (muitos anúncios)
   headers: {
     'Content-Type': 'application/json',
   },
@@ -557,8 +557,8 @@ export const deleteQuizMetrics = async (id) => {
   return response.data;
 };
 
-// Venda Direta
-export const getVendaDiretaMetrics = async (mes = null, ano = null, campanha = null) => {
+// Venda Direta (Funil)
+export const getFunilVendaDiretaMetrics = async (mes = null, ano = null, campanha = null) => {
   const params = {};
   if (mes) params.mes = mes;
   if (ano) params.ano = ano;
@@ -567,17 +567,17 @@ export const getVendaDiretaMetrics = async (mes = null, ano = null, campanha = n
   return response.data;
 };
 
-export const createVendaDiretaMetrics = async (data) => {
+export const createFunilVendaDiretaMetrics = async (data) => {
   const response = await api.post('/funil/venda-direta', data);
   return response.data;
 };
 
-export const updateVendaDiretaMetrics = async (id, data) => {
+export const updateFunilVendaDiretaMetrics = async (id, data) => {
   const response = await api.put(`/funil/venda-direta/${id}`, data);
   return response.data;
 };
 
-export const deleteVendaDiretaMetrics = async (id) => {
+export const deleteFunilVendaDiretaMetrics = async (id) => {
   const response = await api.delete(`/funil/venda-direta/${id}`);
   return response.data;
 };
@@ -586,6 +586,21 @@ export const deleteVendaDiretaMetrics = async (id) => {
 export const getMetaCampanhasParaImportar = async (dateStart, dateEnd) => {
   const response = await api.get('/funil/meta/campanhas', {
     params: { date_start: dateStart, date_end: dateEnd }
+  });
+  return response.data;
+};
+
+// ==================== META ADS - ANÁLISE DETALHADA ====================
+export const getMetaAdsPerformance = async (datePreset = 'last_30d', campaignIds = null) => {
+  const params = { date_preset: datePreset };
+  if (campaignIds) params.campaign_ids = campaignIds;
+  const response = await api.get('/meta/ads/performance', { params });
+  return response.data;
+};
+
+export const getMetaCampaignsPerformance = async (datePreset = 'last_30d') => {
+  const response = await api.get('/meta/campaigns/performance', {
+    params: { date_preset: datePreset }
   });
   return response.data;
 };
