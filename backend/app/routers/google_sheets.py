@@ -27,22 +27,30 @@ def get_google_sheets_client():
     """
     Cria e retorna um cliente autenticado para Google Sheets
 
-    IMPORTANTE: Você precisa:
-    1. Criar uma Service Account no Google Cloud Console
-    2. Fazer download do JSON de credenciais
-    3. Salvar como 'google-credentials.json' na pasta backend/
-    4. Compartilhar a planilha com o email do service account
+    Prioridade:
+    1. Variável de ambiente GOOGLE_CREDENTIALS_JSON (produção)
+    2. Arquivo google-credentials.json (desenvolvimento local)
     """
     try:
-        creds_path = os.path.join(os.path.dirname(__file__), '../../google-credentials.json')
+        # Tentar ler da variável de ambiente primeiro (produção)
+        creds_json = os.getenv('GOOGLE_CREDENTIALS_JSON')
 
-        if not os.path.exists(creds_path):
-            raise FileNotFoundError(
-                "Arquivo google-credentials.json não encontrado. "
-                "Por favor, adicione as credenciais do Google Service Account."
-            )
+        if creds_json:
+            import json
+            creds_dict = json.loads(creds_json)
+            creds = Credentials.from_service_account_info(creds_dict, scopes=SCOPES)
+        else:
+            # Fallback para arquivo local (desenvolvimento)
+            creds_path = os.path.join(os.path.dirname(__file__), '../../google-credentials.json')
 
-        creds = Credentials.from_service_account_file(creds_path, scopes=SCOPES)
+            if not os.path.exists(creds_path):
+                raise FileNotFoundError(
+                    "Google credentials não encontradas. "
+                    "Configure GOOGLE_CREDENTIALS_JSON no ambiente ou adicione google-credentials.json"
+                )
+
+            creds = Credentials.from_service_account_file(creds_path, scopes=SCOPES)
+
         client = gspread.authorize(creds)
         return client
     except Exception as e:
