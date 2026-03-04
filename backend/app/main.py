@@ -26,7 +26,7 @@ app = FastAPI(
 # Lê de variável de ambiente ou usa defaults + Vercel
 cors_origins = os.getenv(
     "CORS_ORIGINS",
-    "http://localhost:5173,http://127.0.0.1:5173,https://medgm-analytics.vercel.app"
+    "http://localhost:5173,http://127.0.0.1:5173,https://medgm-analytics.vercel.app,https://salesdashboard.medgm.com.br"
 )
 allowed_origins = [origin.strip() for origin in cors_origins.split(",")]
 
