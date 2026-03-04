@@ -9,7 +9,7 @@ from dotenv import load_dotenv
 import os
 
 from app.database import init_db
-from app.routers import upload, metrics, crud, comercial, config, export, import_csv, funil, metas, demonstrativos, projecao, vendas, meta_ads, funil_metrics
+from app.routers import upload, metrics, crud, comercial, config, export, import_csv, funil, metas, demonstrativos, projecao, vendas, meta_ads, funil_metrics, google_sheets
 
 # Carrega variáveis de ambiente
 load_dotenv()
@@ -75,6 +75,7 @@ app.include_router(projecao.router)
 app.include_router(vendas.router)
 app.include_router(meta_ads.router)
 app.include_router(funil_metrics.router)
+app.include_router(google_sheets.router)
 
 
 @app.on_event("startup")
