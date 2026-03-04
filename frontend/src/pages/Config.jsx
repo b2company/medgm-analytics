@@ -34,7 +34,8 @@ const Config = () => {
           {[
             { id: 'equipe', label: 'Equipe' },
             { id: 'produtos', label: 'Produtos' },
-            { id: 'funis', label: 'Funis' }
+            { id: 'funis', label: 'Funis' },
+            { id: 'integracoes', label: 'Integrações' }
           ].map(tab => (
             <button
               key={tab.id}
@@ -55,6 +56,7 @@ const Config = () => {
       {activeSubTab === 'equipe' && <Configuracoes activeTab="equipe" />}
       {activeSubTab === 'produtos' && <Configuracoes activeTab="produtos" />}
       {activeSubTab === 'funis' && <Configuracoes activeTab="funis" />}
+      {activeSubTab === 'integracoes' && <Configuracoes activeTab="integracoes" />}
     </div>
   );
 };

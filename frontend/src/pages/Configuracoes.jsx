@@ -1,6 +1,7 @@
 import React, { useState, useEffect } from 'react';
 import Modal from '../components/Modal';
 import { useConfig } from '../context/ConfigContext';
+import { getMetaConfig, createMetaConfig, deleteMetaConfig } from '../services/api';
 
 const API_URL = import.meta.env.VITE_API_URL || 'http://localhost:8000';
 
@@ -27,9 +28,65 @@ const Configuracoes = ({ activeTab = 'equipe' }) => {
   const [showFunilModal, setShowFunilModal] = useState(false);
   const [editingItem, setEditingItem] = useState(null);
 
+  // Estado do Meta Ads
+  const [metaAdsConfig, setMetaAdsConfig] = useState(null);
+  const [loadingMetaAds, setLoadingMetaAds] = useState(false);
+
   useEffect(() => {
     fetchConfig();
-  }, [fetchConfig]);
+    if (activeTab === 'integracoes') {
+      loadMetaAdsConfig();
+    }
+  }, [fetchConfig, activeTab]);
+
+  // Carregar configuração do Meta Ads
+  const loadMetaAdsConfig = async () => {
+    try {
+      setLoadingMetaAds(true);
+      const data = await getMetaConfig();
+      setMetaAdsConfig(data.data);
+    } catch (error) {
+      // Se não houver configuração, é normal (404)
+      if (error.response?.status !== 404) {
+        console.error('Erro ao carregar Meta Ads:', error);
+      }
+      setMetaAdsConfig(null);
+    } finally {
+      setLoadingMetaAds(false);
+    }
+  };
+
+  // Salvar configuração do Meta Ads
+  const handleSaveMetaAds = async (formData) => {
+    try {
+      setLoadingMetaAds(true);
+      const response = await createMetaConfig(formData);
+      alert('Meta Ads configurado com sucesso!');
+      await loadMetaAdsConfig();
+    } catch (error) {
+      console.error('Erro:', error);
+      alert(`Erro ao configurar Meta Ads: ${error.response?.data?.detail || error.message}`);
+    } finally {
+      setLoadingMetaAds(false);
+    }
+  };
+
+  // Deletar configuração do Meta Ads
+  const handleDeleteMetaAds = async () => {
+    if (!confirm('Tem certeza que deseja remover a configuração do Meta Ads?')) return;
+
+    try {
+      setLoadingMetaAds(true);
+      await deleteMetaConfig();
+      alert('Configuração removida com sucesso!');
+      setMetaAdsConfig(null);
+    } catch (error) {
+      console.error('Erro:', error);
+      alert('Erro ao remover configuração');
+    } finally {
+      setLoadingMetaAds(false);
+    }
+  };
 
   const seedData = async () => {
     if (!confirm('Isso criará dados iniciais padrão. Continuar?')) return;
@@ -510,6 +567,73 @@ const Configuracoes = ({ activeTab = 'equipe' }) => {
               </div>
             </div>
           )}
+
+          {/* Tab Integrações */}
+          {activeTab === 'integracoes' && (
+            <div>
+              <div className="bg-white rounded-lg shadow p-6">
+                <div className="border-b border-gray-200 pb-4 mb-6">
+                  <h2 className="text-xl font-bold text-gray-900">Meta Ads (Facebook/Instagram)</h2>
+                  <p className="text-sm text-gray-600 mt-1">
+                    Configure a integração com Meta Marketing API para análise detalhada de campanhas e criativos
+                  </p>
+                </div>
+
+                {loadingMetaAds ? (
+                  <div className="text-center py-8">
+                    <div className="inline-block animate-spin rounded-full h-8 w-8 border-b-2 border-primary"></div>
+                    <p className="mt-2 text-gray-600">Carregando...</p>
+                  </div>
+                ) : metaAdsConfig ? (
+                  <div className="space-y-4">
+                    <div className="bg-green-50 border border-green-200 rounded-lg p-4">
+                      <div className="flex items-start">
+                        <div className="flex-shrink-0">
+                          <svg className="h-5 w-5 text-green-600" fill="currentColor" viewBox="0 0 20 20">
+                            <path fillRule="evenodd" d="M10 18a8 8 0 100-16 8 8 0 000 16zm3.707-9.293a1 1 0 00-1.414-1.414L9 10.586 7.707 9.293a1 1 0 00-1.414 1.414l2 2a1 1 0 001.414 0l4-4z" clipRule="evenodd"/>
+                          </svg>
+                        </div>
+                        <div className="ml-3 flex-1">
+                          <h3 className="text-sm font-medium text-green-800">Integração Ativa</h3>
+                          <div className="mt-2 text-sm text-green-700 space-y-1">
+                            <p><strong>Conta:</strong> {metaAdsConfig.ad_account_name || metaAdsConfig.ad_account_id}</p>
+                            <p><strong>ID da Conta:</strong> {metaAdsConfig.ad_account_id}</p>
+                            {metaAdsConfig.last_sync && (
+                              <p><strong>Última Sincronização:</strong> {new Date(metaAdsConfig.last_sync).toLocaleString('pt-BR')}</p>
+                            )}
+                          </div>
+                        </div>
+                      </div>
+                    </div>
+
+                    <div className="flex justify-end">
+                      <button
+                        onClick={handleDeleteMetaAds}
+                        className="bg-red-600 text-white px-4 py-2 rounded-lg hover:bg-red-700 font-medium"
+                      >
+                        Remover Integração
+                      </button>
+                    </div>
+                  </div>
+                ) : (
+                  <MetaAdsForm onSubmit={handleSaveMetaAds} />
+                )}
+
+                {/* Instruções */}
+                <div className="mt-8 bg-blue-50 border border-blue-200 rounded-lg p-4">
+                  <h3 className="text-sm font-medium text-blue-900 mb-2">Como obter as credenciais:</h3>
+                  <ol className="list-decimal list-inside text-sm text-blue-800 space-y-2">
+                    <li>Acesse o <a href="https://business.facebook.com" target="_blank" rel="noopener noreferrer" className="underline hover:text-blue-600">Facebook Business Manager</a></li>
+                    <li>Vá em Configurações → Contas de Anúncios</li>
+                    <li>Copie o ID da conta (formato: act_XXXXX)</li>
+                    <li>Gere um Token de Acesso no <a href="https://developers.facebook.com/tools/explorer/" target="_blank" rel="noopener noreferrer" className="underline hover:text-blue-600">Graph API Explorer</a></li>
+                    <li>Selecione as permissões: ads_read, ads_management</li>
+                    <li>Copie o token gerado e cole abaixo</li>
+                  </ol>
+                </div>
+              </div>
+            </div>
+          )}
         </>
       )}
 
@@ -905,6 +1029,107 @@ const FunilForm = ({ initialData, onSubmit, onClose }) => {
           className="px-4 py-2 bg-primary text-white rounded-lg hover:bg-blue-600"
         >
           Salvar
+        </button>
+      </div>
+    </form>
+  );
+};
+
+const MetaAdsForm = ({ onSubmit }) => {
+  const [formData, setFormData] = useState({
+    access_token: '',
+    ad_account_id: ''
+  });
+  const [submitting, setSubmitting] = useState(false);
+
+  const handleChange = (e) => {
+    const { name, value } = e.target;
+    setFormData(prev => ({
+      ...prev,
+      [name]: value.trim()
+    }));
+  };
+
+  const handleSubmit = async (e) => {
+    e.preventDefault();
+
+    if (!formData.access_token.trim()) {
+      alert('Access Token é obrigatório');
+      return;
+    }
+
+    if (!formData.ad_account_id.trim()) {
+      alert('ID da Conta de Anúncios é obrigatório');
+      return;
+    }
+
+    // Validar formato do ad_account_id
+    if (!formData.ad_account_id.startsWith('act_')) {
+      alert('ID da conta deve começar com "act_" (exemplo: act_123456789)');
+      return;
+    }
+
+    setSubmitting(true);
+    try {
+      await onSubmit(formData);
+      // Limpar formulário após sucesso
+      setFormData({ access_token: '', ad_account_id: '' });
+    } catch (error) {
+      // Erro já é tratado no parent
+    } finally {
+      setSubmitting(false);
+    }
+  };
+
+  return (
+    <form onSubmit={handleSubmit} className="space-y-4">
+      <div>
+        <label className="block text-sm font-medium text-gray-700 mb-1">
+          Access Token *
+        </label>
+        <input
+          type="password"
+          name="access_token"
+          value={formData.access_token}
+          onChange={handleChange}
+          placeholder="EAAG..."
+          className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-primary focus:border-transparent font-mono text-sm"
+          required
+        />
+        <p className="mt-1 text-xs text-gray-500">
+          Token de acesso gerado no Graph API Explorer com permissões ads_read e ads_management
+        </p>
+      </div>
+
+      <div>
+        <label className="block text-sm font-medium text-gray-700 mb-1">
+          ID da Conta de Anúncios *
+        </label>
+        <input
+          type="text"
+          name="ad_account_id"
+          value={formData.ad_account_id}
+          onChange={handleChange}
+          placeholder="act_123456789"
+          className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-primary focus:border-transparent font-mono text-sm"
+          required
+        />
+        <p className="mt-1 text-xs text-gray-500">
+          ID da conta de anúncios encontrado no Business Manager (formato: act_XXXXX)
+        </p>
+      </div>
+
+      <div className="flex justify-end pt-4">
+        <button
+          type="submit"
+          disabled={submitting}
+          className={`px-6 py-2 bg-primary text-white rounded-lg font-medium ${
+            submitting
+              ? 'opacity-50 cursor-not-allowed'
+              : 'hover:bg-blue-600'
+          }`}
+        >
+          {submitting ? 'Validando...' : 'Salvar Configuração'}
         </button>
       </div>
     </form>
