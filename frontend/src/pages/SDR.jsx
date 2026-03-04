@@ -172,18 +172,35 @@ const SDR = ({ mes: mesProp, ano: anoProp }) => {
 
   // Função helper para calcular dados acumulados
   const calcularAcumulado = (dadosDiarios, campo, metaMensal) => {
-    let acumulado = 0;
-    const diasNoMes = dadosDiarios.length;
-    const metaDiaria = metaMensal / diasNoMes;
+    // Calcular número total de dias no mês
+    const ano = mesAno.ano;
+    const mes = mesAno.mes;
+    const totalDiasNoMes = new Date(ano, mes, 0).getDate();
 
-    return dadosDiarios.map((dia, index) => {
-      acumulado += dia[campo] || 0;
-      return {
-        dia: dia.dia,
-        realizado: acumulado,
-        meta: metaDiaria * (index + 1)
-      };
+    const metaDiaria = metaMensal / totalDiasNoMes;
+
+    // Criar objeto de lookup para dados existentes
+    const dadosPorDia = {};
+    dadosDiarios.forEach(d => {
+      dadosPorDia[d.dia] = d[campo] || 0;
     });
+
+    let acumulado = 0;
+    const resultado = [];
+
+    // Iterar por TODOS os dias do mês
+    for (let dia = 1; dia <= totalDiasNoMes; dia++) {
+      const valorDia = dadosPorDia[dia] || 0;
+      acumulado += valorDia;
+
+      resultado.push({
+        dia: dia,
+        realizado: valorDia > 0 || acumulado > 0 ? acumulado : null, // null para dias sem dados ainda
+        meta: metaDiaria * dia
+      });
+    }
+
+    return resultado;
   };
 
   const handleSubmit = async (formData, isEdit = false) => {
