@@ -203,45 +203,9 @@ const DashboardGeralExecutivo = ({ mes: mesProp, ano: anoProp }) => {
     dataMesAnterior.social_selling?.kpis?.leads?.valor || 0
   ) : null;
 
-  // Completar dados até o final do mês
-  const completarDadosAteUltimoDia = (dadosAcumulados, metaMensal) => {
-    if (!dadosAcumulados || dadosAcumulados.length === 0) return [];
-
-    const ultimoDiaMes = new Date(ano, mes, 0).getDate();
-    const dadosCompletos = [];
-
-    // Adicionar todos os dias do mês
-    for (let dia = 1; dia <= ultimoDiaMes; dia++) {
-      const registroExistente = dadosAcumulados.find(item => item.dia === dia);
-
-      if (registroExistente) {
-        dadosCompletos.push(registroExistente);
-      } else {
-        // Calcular meta linear até o final
-        const metaAcumulada = (metaMensal / ultimoDiaMes) * dia;
-
-        // Para realizado, manter o último valor conhecido até o final do mês
-        const ultimoRegistro = dadosAcumulados[dadosAcumulados.length - 1];
-        const acumulado = ultimoRegistro.acumulado;
-
-        dadosCompletos.push({
-          dia,
-          meta_acumulada: metaAcumulada,
-          acumulado: acumulado
-        });
-      }
-    }
-
-    return dadosCompletos;
-  };
-
-  const dadosVendasCompletos = comercial.acumulado_vendas
-    ? completarDadosAteUltimoDia(comercial.acumulado_vendas, comercial.kpis.vendas.meta)
-    : [];
-
-  const dadosFaturamentoCompletos = comercial.acumulado_faturamento
-    ? completarDadosAteUltimoDia(comercial.acumulado_faturamento, comercial.kpis.faturamento.meta)
-    : [];
+  // Backend retorna todos os dias do mês completos
+  const dadosVendasCompletos = comercial.acumulado_vendas || [];
+  const dadosFaturamentoCompletos = comercial.acumulado_faturamento || [];
 
 return (
     <div className={`h-screen overflow-hidden flex flex-col ${tvMode ? 'fixed inset-0 z-50 bg-gradient-to-br from-slate-50 via-blue-50/30 to-slate-50' : 'bg-gradient-to-br from-slate-50 via-blue-50/30 to-slate-50'}`}>
