@@ -1792,17 +1792,24 @@ async def dashboard_geral(
             SocialSellingMetrica.ano == ano,
             SocialSellingMetrica.data.isnot(None)
         ).group_by(func.extract('day', SocialSellingMetrica.data)).order_by('dia').all()
-        
+
+        # Criar dicionário com ativações diárias (apenas dias que têm registros)
+        ativacoes_por_dia = {}
+        for dia_num, ativ in ativacoes_diarias:
+            ativacoes_por_dia[int(dia_num)] = int(ativ or 0)
+
+        # Calcular acumulados para TODOS os dias do mês
         acumulado_ativacoes = []
         acumulado = 0
         dias_no_mes = calendar.monthrange(ano, mes)[1]
         meta_diaria_ativ = meta_ativacoes / dias_no_mes if dias_no_mes > 0 else 0
-        
-        for dia_num, ativ in ativacoes_diarias:
-            acumulado += int(ativ or 0)
-            meta_acum = meta_diaria_ativ * int(dia_num)
+
+        for dia in range(1, dias_no_mes + 1):
+            # Pegar ativações do dia (ou 0 se não houver)
+            acumulado += ativacoes_por_dia.get(dia, 0)
+            meta_acum = meta_diaria_ativ * dia
             acumulado_ativacoes.append({
-                "dia": int(dia_num),
+                "dia": dia,
                 "acumulado": acumulado,
                 "meta_acumulada": round(meta_acum, 0)
             })
@@ -1986,6 +1993,15 @@ async def dashboard_geral(
 
         closer_diario = closer_query.group_by(func.extract('day', CloserMetrica.data)).order_by('dia').all()
 
+        # Criar dicionário com dados diários (apenas dias que têm registros)
+        dados_por_dia = {}
+        for dia_num, v_dia, fat_dia in closer_diario:
+            dados_por_dia[int(dia_num)] = {
+                'vendas': int(v_dia or 0),
+                'faturamento': float(fat_dia or 0)
+            }
+
+        # Calcular acumulados para TODOS os dias do mês
         acumulado_vendas_arr = []
         acumulado_fat_arr = []
         vendas_acum = 0
@@ -1993,19 +2009,22 @@ async def dashboard_geral(
         meta_diaria_vendas = meta_vendas / dias_no_mes if dias_no_mes > 0 else 0
         meta_diaria_fat = meta_faturamento / dias_no_mes if dias_no_mes > 0 else 0
 
-        for dia_num, v_dia, fat_dia in closer_diario:
-            vendas_acum += int(v_dia or 0)
-            fat_acum += float(fat_dia or 0)
-            meta_vendas_acum = meta_diaria_vendas * int(dia_num)
-            meta_fat_acum = meta_diaria_fat * int(dia_num)
+        for dia in range(1, dias_no_mes + 1):
+            # Pegar dados do dia (ou 0 se não houver)
+            dados_dia = dados_por_dia.get(dia, {'vendas': 0, 'faturamento': 0})
+            vendas_acum += dados_dia['vendas']
+            fat_acum += dados_dia['faturamento']
+
+            meta_vendas_acum = meta_diaria_vendas * dia
+            meta_fat_acum = meta_diaria_fat * dia
 
             acumulado_vendas_arr.append({
-                "dia": int(dia_num),
+                "dia": dia,
                 "acumulado": vendas_acum,
                 "meta_acumulada": round(meta_vendas_acum, 0)
             })
             acumulado_fat_arr.append({
-                "dia": int(dia_num),
+                "dia": dia,
                 "acumulado": round(fat_acum, 2),
                 "meta_acumulada": round(meta_fat_acum, 2)
             })
