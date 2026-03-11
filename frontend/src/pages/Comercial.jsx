@@ -1,5 +1,6 @@
 import React, { useState, useEffect } from 'react';
 import { useNavigate, useLocation } from 'react-router-dom';
+import { useUser } from '@clerk/react';
 import NavbarModern from '../components/NavbarModern';
 import DashboardGeralExecutivo from './DashboardGeralExecutivo';
 import SocialSelling from './SocialSelling';
@@ -11,6 +12,7 @@ import Metas from './Metas';
 const Comercial = () => {
   const navigate = useNavigate();
   const location = useLocation();
+  const { user } = useUser();
 
   // Detectar sub-aba da URL via hash
   const getSubTabFromURL = () => {
@@ -35,6 +37,30 @@ const Comercial = () => {
     return new Date(2000, mesNum - 1).toLocaleString('pt-BR', { month: 'long' })
       .charAt(0).toUpperCase() + new Date(2000, mesNum - 1).toLocaleString('pt-BR', { month: 'long' }).slice(1);
   };
+
+  // Check if user is admin
+  const isAdmin = user?.publicMetadata?.orgRole === 'admin';
+
+  // Define all tabs
+  const allTabs = [
+    { id: 'geral', label: 'Visão Geral', icon: '📊', requireAdmin: false },
+    { id: 'ss', label: 'Social Selling', icon: '📱', requireAdmin: false },
+    { id: 'sdr', label: 'SDR', icon: '📞', requireAdmin: false },
+    { id: 'closer', label: 'Closer', icon: '🎯', requireAdmin: false },
+    { id: 'vendas', label: 'Vendas', icon: '💰', requireAdmin: true },
+    { id: 'metas', label: 'Metas', icon: '🎯', requireAdmin: true }
+  ];
+
+  // Filter tabs based on user role
+  const visibleTabs = allTabs.filter(tab => !tab.requireAdmin || isAdmin);
+
+  // Redirect non-admin users if they try to access admin-only tabs
+  useEffect(() => {
+    if (!isAdmin && (activeSubTab === 'vendas' || activeSubTab === 'metas')) {
+      setActiveSubTab('geral');
+      navigate('/comercial#geral');
+    }
+  }, [activeSubTab, isAdmin, navigate]);
 
   // Filtros como actions da navbar
   const navActions = (
@@ -75,14 +101,7 @@ const Comercial = () => {
         {/* Sub-tabs */}
         <div className="border-b border-gray-200 mb-6">
           <nav className="flex space-x-8">
-            {[
-              { id: 'geral', label: 'Visão Geral', icon: '📊' },
-              { id: 'ss', label: 'Social Selling', icon: '📱' },
-              { id: 'sdr', label: 'SDR', icon: '📞' },
-              { id: 'closer', label: 'Closer', icon: '🎯' },
-              { id: 'vendas', label: 'Vendas', icon: '💰' },
-              { id: 'metas', label: 'Metas', icon: '🎯' }
-            ].map(tab => (
+            {visibleTabs.map(tab => (
               <button
                 key={tab.id}
                 onClick={() => handleSubTabChange(tab.id)}
@@ -105,8 +124,8 @@ const Comercial = () => {
           {activeSubTab === 'ss' && <SocialSelling mes={mes} ano={ano} />}
           {activeSubTab === 'sdr' && <SDR mes={mes} ano={ano} />}
           {activeSubTab === 'closer' && <Closer mes={mes} ano={ano} />}
-          {activeSubTab === 'vendas' && <Vendas mes={mes} ano={ano} />}
-          {activeSubTab === 'metas' && <Metas mes={mes} ano={ano} />}
+          {activeSubTab === 'vendas' && isAdmin && <Vendas mes={mes} ano={ano} />}
+          {activeSubTab === 'metas' && isAdmin && <Metas mes={mes} ano={ano} />}
         </div>
       </div>
     </div>
