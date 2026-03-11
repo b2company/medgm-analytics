@@ -1,0 +1,314 @@
+import React, { useState, useEffect } from 'react';
+import { getDashboardGeral } from '../services/api';
+
+const DashboardGeral = ({ mes, ano }) => {
+  const [data, setData] = useState(null);
+  const [loading, setLoading] = useState(true);
+  const [funilFilter, setFunilFilter] = useState('todos');
+
+  useEffect(() => {
+    fetchData();
+  }, [mes, ano, funilFilter]);
+
+  const fetchData = async () => {
+    setLoading(true);
+    try {
+      const response = await getDashboardGeral(mes, ano, funilFilter);
+      setData(response);
+    } catch (error) {
+      console.error('Erro ao buscar dashboard geral:', error);
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  const getStatusColor = (perc) => {
+    if (perc >= 80) return 'bg-green-500';
+    if (perc >= 40) return 'bg-yellow-500';
+    return 'bg-red-500';
+  };
+
+  const getStatusText = (perc) => {
+    if (perc >= 80) return 'text-green-700';
+    if (perc >= 40) return 'text-yellow-700';
+    return 'text-red-700';
+  };
+
+  const formatCurrency = (value) => {
+    return new Intl.NumberFormat('pt-BR', { style: 'currency', currency: 'BRL' }).format(value || 0);
+  };
+
+  if (loading) {
+    return (
+      <div className="flex justify-center items-center h-96">
+        <div className="inline-block animate-spin rounded-full h-12 w-12 border-b-2 border-primary"></div>
+      </div>
+    );
+  }
+
+  if (!data) {
+    return (
+      <div className="text-center py-12 text-gray-500">
+        Nenhum dado disponível para o período selecionado
+      </div>
+    );
+  }
+
+  const { social_selling, comercial, projecoes } = data;
+
+  return (
+    <div className="space-y-6">
+      {/* Filtro de Funil */}
+      <div className="bg-white rounded-lg shadow-sm border border-gray-200 p-4">
+        <div className="flex flex-wrap items-center gap-4">
+          <label className="text-sm font-medium text-gray-700">Filtrar Funil (Comercial):</label>
+          <div className="flex flex-wrap gap-2">
+            {['todos', 'SS', 'Quiz', 'Indicacao', 'Webinario'].map((funil) => (
+              <button
+                key={funil}
+                onClick={() => setFunilFilter(funil)}
+                className={`px-4 py-2 rounded-lg text-sm font-medium transition-colors min-h-[44px] min-w-[44px] $${
+                  funilFilter === funil
+                    ? 'bg-primary text-white'
+                    : 'bg-gray-100 text-gray-700 hover:bg-gray-200'
+                }`}
+              >
+                {funil === 'todos' ? 'Todos' : funil}
+              </button>
+            ))}
+          </div>
+        </div>
+      </div>
+
+      {/* Grid Layout */}
+      <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
+        {/* SOCIAL SELLING */}
+        <div className="space-y-4">
+          <h2 className="text-xl font-bold text-gray-900">
+            📱 Social Selling
+            <span className="text-sm font-normal text-gray-500 ml-2">(não filtrado)</span>
+          </h2>
+
+          <div className="space-y-3">
+            <div className="bg-white rounded-lg shadow-sm border border-gray-200 p-4">
+              <div className="flex justify-between items-center mb-2">
+                <span className="text-sm font-medium text-gray-700">Ativações</span>
+                <span className={`text-sm font-bold $${getStatusText(social_selling.kpis.ativacoes.perc)}`}>
+                  {social_selling.kpis.ativacoes.perc.toFixed(1)}%
+                </span>
+              </div>
+              <div className="mb-2">
+                <div className="w-full bg-gray-200 rounded-full h-3">
+                  <div
+                    className={`h-3 rounded-full transition-all duration-300 $${getStatusColor(social_selling.kpis.ativacoes.perc)}`}
+                    style={{ width: `$${Math.min(social_selling.kpis.ativacoes.perc, 100)}%` }}
+                  ></div>
+                </div>
+              </div>
+              <div className="text-xs text-gray-600">
+                {social_selling.kpis.ativacoes.valor.toLocaleString()} / {social_selling.kpis.ativacoes.meta.toLocaleString()}
+              </div>
+            </div>
+
+            <div className="bg-white rounded-lg shadow-sm border border-gray-200 p-4">
+              <div className="flex justify-between items-center mb-2">
+                <span className="text-sm font-medium text-gray-700">Conversões</span>
+                <span className="text-sm font-bold text-blue-700">
+                  {social_selling.kpis.conversoes.taxa.toFixed(2)}% taxa
+                </span>
+              </div>
+              <div className="text-lg font-bold text-gray-900">
+                {social_selling.kpis.conversoes.valor.toLocaleString()}
+              </div>
+            </div>
+
+            <div className="bg-white rounded-lg shadow-sm border border-gray-200 p-4">
+              <div className="flex justify-between items-center mb-2">
+                <span className="text-sm font-medium text-gray-700">Leads Gerados</span>
+                <span className={`text-sm font-bold $${getStatusText(social_selling.kpis.leads.perc)}`}>
+                  {social_selling.kpis.leads.perc.toFixed(1)}%
+                </span>
+              </div>
+              <div className="mb-2">
+                <div className="w-full bg-gray-200 rounded-full h-3">
+                  <div
+                    className={`h-3 rounded-full transition-all duration-300 $${getStatusColor(social_selling.kpis.leads.perc)}`}
+                    style={{ width: `$${Math.min(social_selling.kpis.leads.perc, 100)}%` }}
+                  ></div>
+                </div>
+              </div>
+              <div className="text-xs text-gray-600">
+                {social_selling.kpis.leads.valor.toLocaleString()} / {social_selling.kpis.leads.meta.toLocaleString()}
+              </div>
+            </div>
+          </div>
+
+          <div className="bg-white rounded-lg shadow-sm border border-gray-200 p-4">
+            <h3 className="text-sm font-bold text-gray-900 mb-3">Por Vendedor</h3>
+            <div className="space-y-2">
+              {social_selling.por_vendedor.map((v, idx) => (
+                <div key={idx} className="flex items-center justify-between text-sm">
+                  <span className="text-gray-700">{v.vendedor}</span>
+                  <div className="flex items-center gap-2">
+                    <span className={`font-bold $${getStatusText(v.perc)}`}>
+                      {v.perc.toFixed(1)}%
+                    </span>
+                    <span className="text-gray-500 text-xs">
+                      ({v.leads}/{v.meta})
+                    </span>
+                  </div>
+                </div>
+              ))}
+            </div>
+          </div>
+        </div>
+
+        {/* COMERCIAL */}
+        <div className="space-y-4">
+          <h2 className="text-xl font-bold text-gray-900 flex items-center gap-2">
+            💼 Comercial
+            {funilFilter !== 'todos' && (
+              <span className="text-sm font-medium text-primary bg-primary/10 px-2 py-1 rounded">
+                Funil: {funilFilter}
+              </span>
+            )}
+          </h2>
+
+          <div className="space-y-3">
+            {['leads', 'reunioes_agendadas', 'reunioes_realizadas', 'vendas'].map((kpi) => (
+              <div key={kpi} className="bg-white rounded-lg shadow-sm border border-gray-200 p-4">
+                <div className="flex justify-between items-center mb-2">
+                  <span className="text-sm font-medium text-gray-700">
+                    {kpi === 'leads' && 'Leads Recebidos'}
+                    {kpi === 'reunioes_agendadas' && 'Reuniões Agendadas'}
+                    {kpi === 'reunioes_realizadas' && 'Reuniões Realizadas'}
+                    {kpi === 'vendas' && 'Vendas'}
+                  </span>
+                  <span className={`text-sm font-bold $${getStatusText(comercial.kpis[kpi].perc)}`}>
+                    {comercial.kpis[kpi].perc.toFixed(1)}%
+                  </span>
+                </div>
+                <div className="mb-2">
+                  <div className="w-full bg-gray-200 rounded-full h-3">
+                    <div
+                      className={`h-3 rounded-full transition-all duration-300 $${getStatusColor(comercial.kpis[kpi].perc)}`}
+                      style={{ width: `$${Math.min(comercial.kpis[kpi].perc, 100)}%` }}
+                    ></div>
+                  </div>
+                </div>
+                <div className="text-xs text-gray-600">
+                  {comercial.kpis[kpi].valor.toLocaleString()} / {comercial.kpis[kpi].meta.toLocaleString()}
+                </div>
+              </div>
+            ))}
+
+            <div className="bg-white rounded-lg shadow-sm border border-gray-200 p-4">
+              <div className="flex justify-between items-center mb-2">
+                <span className="text-sm font-medium text-gray-700">Faturamento</span>
+                <span className={`text-sm font-bold $${getStatusText(comercial.kpis.faturamento.perc)}`}>
+                  {comercial.kpis.faturamento.perc.toFixed(1)}%
+                </span>
+              </div>
+              <div className="mb-2">
+                <div className="w-full bg-gray-200 rounded-full h-3">
+                  <div
+                    className={`h-3 rounded-full transition-all duration-300 $${getStatusColor(comercial.kpis.faturamento.perc)}`}
+                    style={{ width: `$${Math.min(comercial.kpis.faturamento.perc, 100)}%` }}
+                  ></div>
+                </div>
+              </div>
+              <div className="text-xs text-gray-600">
+                {formatCurrency(comercial.kpis.faturamento.valor)} / {formatCurrency(comercial.kpis.faturamento.meta)}
+              </div>
+            </div>
+          </div>
+
+          <div className="bg-white rounded-lg shadow-sm border border-gray-200 p-4">
+            <h3 className="text-sm font-bold text-gray-900 mb-3">Por Pessoa</h3>
+            <div className="space-y-2">
+              {comercial.por_pessoa.map((p, idx) => (
+                <div key={idx} className="flex items-center justify-between text-sm">
+                  <div className="flex items-center gap-2">
+                    <span className="text-gray-700">{p.pessoa}</span>
+                    <span className="text-xs text-gray-500">({p.area})</span>
+                  </div>
+                  <div className="flex items-center gap-2">
+                    <span className={`font-bold $${getStatusText(p.perc)}`}>
+                      {p.perc.toFixed(1)}%
+                    </span>
+                    <span className="text-gray-500 text-xs">
+                      ({p.realizado}/{p.meta})
+                    </span>
+                  </div>
+                </div>
+              ))}
+            </div>
+          </div>
+        </div>
+      </div>
+
+      {/* PROJEÇÕES */}
+      <div className="bg-gradient-to-r from-blue-50 to-indigo-50 rounded-lg shadow-sm border border-blue-200 p-6">
+        <h2 className="text-lg font-bold text-gray-900 mb-4">📈 Projeções do Mês</h2>
+
+        {projecoes.alerta_principal && (
+          <div className="bg-red-50 border border-red-200 rounded-lg p-3 mb-4">
+            <p className="text-sm text-red-800 font-medium">⚠️ {projecoes.alerta_principal}</p>
+          </div>
+        )}
+
+        <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+          <div className="bg-white rounded-lg p-4 shadow-sm">
+            <h3 className="text-sm font-medium text-gray-700 mb-2">Vendas</h3>
+            <div className="flex items-end gap-4">
+              <div>
+                <p className="text-xs text-gray-500">Projeção</p>
+                <p className="text-2xl font-bold text-blue-600">{projecoes.vendas.projecao}</p>
+              </div>
+              <div>
+                <p className="text-xs text-gray-500">Meta</p>
+                <p className="text-xl font-bold text-gray-700">{projecoes.vendas.meta}</p>
+              </div>
+              <div>
+                <p className="text-xs text-gray-500">Realizado</p>
+                <p className="text-xl font-bold text-green-600">{projecoes.vendas.realizado}</p>
+              </div>
+            </div>
+            <div className="mt-3 text-xs text-gray-600">
+              Ritmo atual: {projecoes.ritmo_atual.vendas_dia.toFixed(2)} vendas/dia
+            </div>
+          </div>
+
+          <div className="bg-white rounded-lg p-4 shadow-sm">
+            <h3 className="text-sm font-medium text-gray-700 mb-2">Faturamento</h3>
+            <div className="flex items-end gap-4">
+              <div>
+                <p className="text-xs text-gray-500">Projeção</p>
+                <p className="text-2xl font-bold text-blue-600">{formatCurrency(projecoes.faturamento.projecao)}</p>
+              </div>
+              <div>
+                <p className="text-xs text-gray-500">Meta</p>
+                <p className="text-xl font-bold text-gray-700">{formatCurrency(projecoes.faturamento.meta)}</p>
+              </div>
+              <div>
+                <p className="text-xs text-gray-500">Realizado</p>
+                <p className="text-xl font-bold text-green-600">{formatCurrency(projecoes.faturamento.realizado)}</p>
+              </div>
+            </div>
+            <div className="mt-3 text-xs text-gray-600">
+              Ritmo atual: {formatCurrency(projecoes.ritmo_atual.faturamento_dia)}/dia
+            </div>
+          </div>
+        </div>
+
+        {projecoes.dias_uteis_restantes > 0 && (
+          <div className="mt-4 text-sm text-gray-600">
+            📅 {projecoes.dias_uteis_restantes} dias úteis restantes no mês
+          </div>
+        )}
+      </div>
+    </div>
+  );
+};
+
+export default DashboardGeral;

@@ -1,0 +1,1139 @@
+import React, { useState, useEffect } from 'react';
+import Modal from '../components/Modal';
+import { useConfig } from '../context/ConfigContext';
+import { getMetaConfig, createMetaConfig, deleteMetaConfig } from '../services/api';
+
+const API_URL = import.meta.env.VITE_API_URL || 'http://localhost:8000';
+
+const Configuracoes = ({ activeTab = 'equipe' }) => {
+  // activeTab agora vem como prop do Config.jsx
+  const [activeSubTab, setActiveSubTab] = useState('social_selling');
+
+  // Usar contexto ao invés de estado local
+  const {
+    pessoas,
+    produtos,
+    funis,
+    resumo,
+    loading,
+    fetchConfig,
+    fetchPessoas,
+    fetchProdutos,
+    fetchFunis
+  } = useConfig();
+
+  // Estado dos modais
+  const [showPessoaModal, setShowPessoaModal] = useState(false);
+  const [showProdutoModal, setShowProdutoModal] = useState(false);
+  const [showFunilModal, setShowFunilModal] = useState(false);
+  const [editingItem, setEditingItem] = useState(null);
+
+  // Estado do Meta Ads
+  const [metaAdsConfig, setMetaAdsConfig] = useState(null);
+  const [loadingMetaAds, setLoadingMetaAds] = useState(false);
+
+  useEffect(() => {
+    fetchConfig();
+    if (activeTab === 'integracoes') {
+      loadMetaAdsConfig();
+    }
+  }, [fetchConfig, activeTab]);
+
+  // Carregar configuração do Meta Ads
+  const loadMetaAdsConfig = async () => {
+    try {
+      setLoadingMetaAds(true);
+      const data = await getMetaConfig();
+      setMetaAdsConfig(data.data);
+    } catch (error) {
+      // Se não houver configuração, é normal (404)
+      if (error.response?.status !== 404) {
+        console.error('Erro ao carregar Meta Ads:', error);
+      }
+      setMetaAdsConfig(null);
+    } finally {
+      setLoadingMetaAds(false);
+    }
+  };
+
+  // Salvar configuração do Meta Ads
+  const handleSaveMetaAds = async (formData) => {
+    try {
+      setLoadingMetaAds(true);
+      const response = await createMetaConfig(formData);
+      alert('Meta Ads configurado com sucesso!');
+      await loadMetaAdsConfig();
+    } catch (error) {
+      console.error('Erro:', error);
+      alert(`Erro ao configurar Meta Ads: ${error.response?.data?.detail || error.message}`);
+    } finally {
+      setLoadingMetaAds(false);
+    }
+  };
+
+  // Deletar configuração do Meta Ads
+  const handleDeleteMetaAds = async () => {
+    if (!confirm('Tem certeza que deseja remover a configuração do Meta Ads?')) return;
+
+    try {
+      setLoadingMetaAds(true);
+      await deleteMetaConfig();
+      alert('Configuração removida com sucesso!');
+      setMetaAdsConfig(null);
+    } catch (error) {
+      console.error('Erro:', error);
+      alert('Erro ao remover configuração');
+    } finally {
+      setLoadingMetaAds(false);
+    }
+  };
+
+  const seedData = async () => {
+    if (!confirm('Isso criará dados iniciais padrão. Continuar?')) return;
+
+    try {
+      const response = await fetch(`${API_URL}/config/seed`, { method: 'POST' });
+      const data = await response.json();
+      alert(data.message);
+      fetchConfig(); // Recarregar do contexto
+    } catch (error) {
+      console.error('Erro:', error);
+      alert('Erro ao criar dados iniciais');
+    }
+  };
+
+  // Filtrar pessoas por função
+  const getPessoasPorFuncao = (funcao) => {
+    return pessoas.filter(p => p.funcao === funcao);
+  };
+
+  // CRUD Pessoa
+  const handleSavePessoa = async (formData) => {
+    try {
+      const url = editingItem
+        ? `${API_URL}/config/pessoas/${editingItem.id}`
+        : `${API_URL}/config/pessoas`;
+      const method = editingItem ? 'PUT' : 'POST';
+
+      const response = await fetch(url, {
+        method,
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify(formData)
+      });
+
+      if (response.ok) {
+        alert(editingItem ? 'Pessoa atualizada!' : 'Pessoa criada!');
+        setShowPessoaModal(false);
+        setEditingItem(null);
+        fetchPessoas(); // Recarregar apenas pessoas do contexto
+      } else {
+        const error = await response.json();
+        alert(`Erro: ${error.detail}`);
+      }
+    } catch (error) {
+      console.error('Erro:', error);
+      alert('Erro ao salvar pessoa');
+    }
+  };
+
+  const handleDeletePessoa = async (id) => {
+    if (!confirm('Tem certeza que deseja deletar esta pessoa?')) return;
+
+    try {
+      const response = await fetch(`${API_URL}/config/pessoas/${id}`, { method: 'DELETE' });
+      if (response.ok) {
+        alert('Pessoa deletada!');
+        fetchPessoas(); // Recarregar apenas pessoas do contexto
+      }
+    } catch (error) {
+      console.error('Erro:', error);
+    }
+  };
+
+  // CRUD Produto
+  const handleSaveProduto = async (formData) => {
+    try {
+      const url = editingItem
+        ? `${API_URL}/config/produtos/${editingItem.id}`
+        : `${API_URL}/config/produtos`;
+      const method = editingItem ? 'PUT' : 'POST';
+
+      const response = await fetch(url, {
+        method,
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify(formData)
+      });
+
+      if (response.ok) {
+        alert(editingItem ? 'Produto atualizado!' : 'Produto criado!');
+        setShowProdutoModal(false);
+        setEditingItem(null);
+        fetchProdutos(); // Recarregar apenas produtos do contexto
+      } else {
+        const error = await response.json();
+        alert(`Erro: ${error.detail}`);
+      }
+    } catch (error) {
+      console.error('Erro:', error);
+      alert('Erro ao salvar produto');
+    }
+  };
+
+  const handleDeleteProduto = async (id) => {
+    if (!confirm('Tem certeza que deseja deletar este produto?')) return;
+
+    try {
+      const response = await fetch(`${API_URL}/config/produtos/${id}`, { method: 'DELETE' });
+      if (response.ok) {
+        alert('Produto deletado!');
+        fetchProdutos(); // Recarregar apenas produtos do contexto
+      }
+    } catch (error) {
+      console.error('Erro:', error);
+    }
+  };
+
+  // CRUD Funil
+  const handleSaveFunil = async (formData) => {
+    try {
+      const url = editingItem
+        ? `${API_URL}/config/funis/${editingItem.id}`
+        : `${API_URL}/config/funis`;
+      const method = editingItem ? 'PUT' : 'POST';
+
+      const response = await fetch(url, {
+        method,
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify(formData)
+      });
+
+      if (response.ok) {
+        alert(editingItem ? 'Funil atualizado!' : 'Funil criado!');
+        setShowFunilModal(false);
+        setEditingItem(null);
+        fetchFunis(); // Recarregar apenas funis do contexto
+      } else {
+        const error = await response.json();
+        alert(`Erro: ${error.detail}`);
+      }
+    } catch (error) {
+      console.error('Erro:', error);
+      alert('Erro ao salvar funil');
+    }
+  };
+
+  const handleDeleteFunil = async (id) => {
+    if (!confirm('Tem certeza que deseja deletar este funil?')) return;
+
+    try {
+      const response = await fetch(`${API_URL}/config/funis/${id}`, { method: 'DELETE' });
+      if (response.ok) {
+        alert('Funil deletado!');
+        fetchFunis(); // Recarregar apenas funis do contexto
+      }
+    } catch (error) {
+      console.error('Erro:', error);
+    }
+  };
+
+  const funcaoLabels = {
+    social_selling: 'Social Selling',
+    sdr: 'SDR',
+    closer: 'Closer'
+  };
+
+  return (
+    <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-8">
+      {/* Header */}
+      <div className="mb-8 flex justify-between items-center">
+        <div>
+          <h1 className="text-3xl font-bold text-gray-900">Configuracoes</h1>
+          <p className="text-gray-600 mt-2">Gerencie equipe, produtos e funis de venda</p>
+        </div>
+        <button
+          onClick={seedData}
+          className="bg-gray-100 text-gray-700 px-4 py-2 rounded-lg hover:bg-gray-200 text-sm"
+        >
+          Criar dados iniciais
+        </button>
+      </div>
+
+      {/* Cards de Resumo */}
+      {resumo && (
+        <div className="grid grid-cols-1 md:grid-cols-3 gap-6 mb-8">
+          <div className="bg-white rounded-lg shadow p-6">
+            <h3 className="text-lg font-semibold text-gray-900 mb-2">Equipe</h3>
+            <div className="text-3xl font-bold text-blue-600">{resumo.pessoas?.ativos || 0}</div>
+            <p className="text-sm text-gray-600">pessoas ativas</p>
+            <div className="mt-4 space-y-1 text-sm">
+              {resumo.pessoas?.por_funcao && Object.entries(resumo.pessoas.por_funcao).map(([funcao, qtd]) => (
+                <div key={funcao} className="flex justify-between">
+                  <span className="text-gray-600">{funcaoLabels[funcao] || funcao}</span>
+                  <span className="font-semibold">{qtd}</span>
+                </div>
+              ))}
+            </div>
+          </div>
+
+          <div className="bg-white rounded-lg shadow p-6">
+            <h3 className="text-lg font-semibold text-gray-900 mb-2">Produtos</h3>
+            <div className="text-3xl font-bold text-green-600">{resumo.produtos?.ativos || 0}</div>
+            <p className="text-sm text-gray-600">produtos ativos</p>
+          </div>
+
+          <div className="bg-white rounded-lg shadow p-6">
+            <h3 className="text-lg font-semibold text-gray-900 mb-2">Funis</h3>
+            <div className="text-3xl font-bold text-purple-600">{resumo.funis?.ativos || 0}</div>
+            <p className="text-sm text-gray-600">funis ativos</p>
+          </div>
+        </div>
+      )}
+
+      {/* Tabs removidas - agora são gerenciadas pelo Config.jsx */}
+
+      {loading ? (
+        <div className="text-center py-12">
+          <div className="inline-block animate-spin rounded-full h-12 w-12 border-b-2 border-primary"></div>
+          <p className="mt-4 text-gray-600">Carregando...</p>
+        </div>
+      ) : (
+        <>
+          {/* Tab Equipe */}
+          {activeTab === 'equipe' && (
+            <div>
+              {/* Sub-tabs */}
+              <div className="flex bg-gray-100 rounded-lg p-1 mb-6 w-fit">
+                {['social_selling', 'sdr', 'closer'].map(funcao => (
+                  <button
+                    key={funcao}
+                    onClick={() => setActiveSubTab(funcao)}
+                    className={`px-6 py-2 rounded-lg text-sm font-medium transition-colors ${
+                      activeSubTab === funcao
+                        ? 'bg-white shadow text-gray-900'
+                        : 'text-gray-600 hover:text-gray-900'
+                    }`}
+                  >
+                    {funcaoLabels[funcao]}
+                  </button>
+                ))}
+              </div>
+
+              {/* Botão adicionar */}
+              <div className="flex justify-end mb-4">
+                <button
+                  onClick={() => {
+                    setEditingItem(null);
+                    setShowPessoaModal(true);
+                  }}
+                  className="bg-primary text-white px-4 py-2 rounded-lg hover:bg-blue-600 font-medium"
+                >
+                  + Nova Pessoa
+                </button>
+              </div>
+
+              {/* Tabela de Pessoas */}
+              <div className="bg-white rounded-lg shadow overflow-hidden">
+                <table className="min-w-full divide-y divide-gray-200">
+                  <thead className="bg-gray-50">
+                    <tr>
+                      <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase">Nome</th>
+                      <th className="px-6 py-3 text-center text-xs font-medium text-gray-500 uppercase">Status</th>
+                      <th className="px-6 py-3 text-center text-xs font-medium text-gray-500 uppercase">Senioridade</th>
+                      <th className="px-6 py-3 text-center text-xs font-medium text-gray-500 uppercase">Ações</th>
+                    </tr>
+                  </thead>
+                  <tbody className="bg-white divide-y divide-gray-200">
+                    {getPessoasPorFuncao(activeSubTab).map(pessoa => (
+                      <tr key={pessoa.id} className="hover:bg-gray-50">
+                        <td className="px-6 py-4 whitespace-nowrap font-medium text-gray-900">
+                          {pessoa.nome}
+                        </td>
+                        <td className="px-6 py-4 whitespace-nowrap text-center">
+                          <span className={`inline-flex px-2 py-1 text-xs font-semibold rounded-full ${
+                            pessoa.ativo
+                              ? 'bg-green-100 text-green-800'
+                              : 'bg-red-100 text-red-800'
+                          }`}>
+                            {pessoa.ativo ? 'Ativo' : 'Inativo'}
+                          </span>
+                        </td>
+                        <td className="px-6 py-4 whitespace-nowrap text-center">
+                          <span className="inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium bg-blue-100 text-blue-800">
+                            Nível {pessoa.nivel_senioridade || 1}
+                          </span>
+                        </td>
+                        <td className="px-6 py-4 whitespace-nowrap text-center">
+                          <button
+                            onClick={() => {
+                              setEditingItem(pessoa);
+                              setShowPessoaModal(true);
+                            }}
+                            className="text-blue-600 hover:text-blue-800 mr-3"
+                          >
+                            Editar
+                          </button>
+                          <button
+                            onClick={() => handleDeletePessoa(pessoa.id)}
+                            className="text-red-600 hover:text-red-800"
+                          >
+                            Deletar
+                          </button>
+                        </td>
+                      </tr>
+                    ))}
+                    {getPessoasPorFuncao(activeSubTab).length === 0 && (
+                      <tr>
+                        <td colSpan="4" className="px-6 py-8 text-center text-gray-500">
+                          Nenhuma pessoa cadastrada nesta função.
+                        </td>
+                      </tr>
+                    )}
+                  </tbody>
+                </table>
+              </div>
+            </div>
+          )}
+
+          {/* Tab Produtos */}
+          {activeTab === 'produtos' && (
+            <div>
+              <div className="flex justify-end mb-4">
+                <button
+                  onClick={() => {
+                    setEditingItem(null);
+                    setShowProdutoModal(true);
+                  }}
+                  className="bg-primary text-white px-4 py-2 rounded-lg hover:bg-blue-600 font-medium"
+                >
+                  + Novo Produto
+                </button>
+              </div>
+
+              <div className="bg-white rounded-lg shadow overflow-hidden">
+                <table className="min-w-full divide-y divide-gray-200">
+                  <thead className="bg-gray-50">
+                    <tr>
+                      <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase">Nome</th>
+                      <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase">Categoria</th>
+                      <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase">Plano</th>
+                      <th className="px-6 py-3 text-center text-xs font-medium text-gray-500 uppercase">Status</th>
+                      <th className="px-6 py-3 text-center text-xs font-medium text-gray-500 uppercase">Visível</th>
+                      <th className="px-6 py-3 text-center text-xs font-medium text-gray-500 uppercase">Ações</th>
+                    </tr>
+                  </thead>
+                  <tbody className="bg-white divide-y divide-gray-200">
+                    {produtos.map(produto => (
+                      <tr key={produto.id} className="hover:bg-gray-50">
+                        <td className="px-6 py-4 whitespace-nowrap font-medium text-gray-900">
+                          {produto.nome}
+                        </td>
+                        <td className="px-6 py-4 whitespace-nowrap text-gray-600">
+                          {produto.categoria || '-'}
+                        </td>
+                        <td className="px-6 py-4 whitespace-nowrap">
+                          {produto.plano ? (
+                            <span className="inline-flex px-2 py-1 text-xs bg-purple-100 text-purple-800 rounded font-medium">
+                              {produto.plano}
+                            </span>
+                          ) : (
+                            <span className="text-gray-400 text-sm">-</span>
+                          )}
+                        </td>
+                        <td className="px-6 py-4 whitespace-nowrap text-center">
+                          <span className={`inline-flex px-2 py-1 text-xs font-semibold rounded-full ${
+                            produto.status === 'ativo'
+                              ? 'bg-green-100 text-green-800'
+                              : 'bg-gray-100 text-gray-600'
+                          }`}>
+                            {produto.status || 'ativo'}
+                          </span>
+                        </td>
+                        <td className="px-6 py-4 whitespace-nowrap text-center">
+                          <span className={`inline-flex px-2 py-1 text-xs font-semibold rounded-full ${
+                            produto.ativo
+                              ? 'bg-blue-100 text-blue-800'
+                              : 'bg-red-100 text-red-800'
+                          }`}>
+                            {produto.ativo ? 'Sim' : 'Não'}
+                          </span>
+                        </td>
+                        <td className="px-6 py-4 whitespace-nowrap text-center">
+                          <button
+                            onClick={() => {
+                              setEditingItem(produto);
+                              setShowProdutoModal(true);
+                            }}
+                            className="text-blue-600 hover:text-blue-800 mr-3"
+                          >
+                            Editar
+                          </button>
+                          <button
+                            onClick={() => handleDeleteProduto(produto.id)}
+                            className="text-red-600 hover:text-red-800"
+                          >
+                            Deletar
+                          </button>
+                        </td>
+                      </tr>
+                    ))}
+                    {produtos.length === 0 && (
+                      <tr>
+                        <td colSpan="6" className="px-6 py-8 text-center text-gray-500">
+                          Nenhum produto cadastrado.
+                        </td>
+                      </tr>
+                    )}
+                  </tbody>
+                </table>
+              </div>
+            </div>
+          )}
+
+          {/* Tab Funis */}
+          {activeTab === 'funis' && (
+            <div>
+              <div className="flex justify-end mb-4">
+                <button
+                  onClick={() => {
+                    setEditingItem(null);
+                    setShowFunilModal(true);
+                  }}
+                  className="bg-primary text-white px-4 py-2 rounded-lg hover:bg-blue-600 font-medium"
+                >
+                  + Novo Funil
+                </button>
+              </div>
+
+              <div className="bg-white rounded-lg shadow overflow-hidden">
+                <table className="min-w-full divide-y divide-gray-200">
+                  <thead className="bg-gray-50">
+                    <tr>
+                      <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase">Nome</th>
+                      <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase">Descricao</th>
+                      <th className="px-6 py-3 text-center text-xs font-medium text-gray-500 uppercase">Ordem</th>
+                      <th className="px-6 py-3 text-center text-xs font-medium text-gray-500 uppercase">Status</th>
+                      <th className="px-6 py-3 text-center text-xs font-medium text-gray-500 uppercase">Acoes</th>
+                    </tr>
+                  </thead>
+                  <tbody className="bg-white divide-y divide-gray-200">
+                    {funis.map(funil => (
+                      <tr key={funil.id} className="hover:bg-gray-50">
+                        <td className="px-6 py-4 whitespace-nowrap font-medium text-gray-900">
+                          {funil.nome}
+                        </td>
+                        <td className="px-6 py-4 text-gray-600">
+                          {funil.descricao || '-'}
+                        </td>
+                        <td className="px-6 py-4 whitespace-nowrap text-center text-gray-600">
+                          {funil.ordem}
+                        </td>
+                        <td className="px-6 py-4 whitespace-nowrap text-center">
+                          <span className={`inline-flex px-2 py-1 text-xs font-semibold rounded-full ${
+                            funil.ativo
+                              ? 'bg-green-100 text-green-800'
+                              : 'bg-red-100 text-red-800'
+                          }`}>
+                            {funil.ativo ? 'Ativo' : 'Inativo'}
+                          </span>
+                        </td>
+                        <td className="px-6 py-4 whitespace-nowrap text-center">
+                          <button
+                            onClick={() => {
+                              setEditingItem(funil);
+                              setShowFunilModal(true);
+                            }}
+                            className="text-blue-600 hover:text-blue-800 mr-3"
+                          >
+                            Editar
+                          </button>
+                          <button
+                            onClick={() => handleDeleteFunil(funil.id)}
+                            className="text-red-600 hover:text-red-800"
+                          >
+                            Deletar
+                          </button>
+                        </td>
+                      </tr>
+                    ))}
+                    {funis.length === 0 && (
+                      <tr>
+                        <td colSpan="5" className="px-6 py-8 text-center text-gray-500">
+                          Nenhum funil cadastrado.
+                        </td>
+                      </tr>
+                    )}
+                  </tbody>
+                </table>
+              </div>
+            </div>
+          )}
+
+          {/* Tab Integrações */}
+          {activeTab === 'integracoes' && (
+            <div>
+              <div className="bg-white rounded-lg shadow p-6">
+                <div className="border-b border-gray-200 pb-4 mb-6">
+                  <h2 className="text-xl font-bold text-gray-900">Meta Ads (Facebook/Instagram)</h2>
+                  <p className="text-sm text-gray-600 mt-1">
+                    Configure a integração com Meta Marketing API para análise detalhada de campanhas e criativos
+                  </p>
+                </div>
+
+                {loadingMetaAds ? (
+                  <div className="text-center py-8">
+                    <div className="inline-block animate-spin rounded-full h-8 w-8 border-b-2 border-primary"></div>
+                    <p className="mt-2 text-gray-600">Carregando...</p>
+                  </div>
+                ) : metaAdsConfig ? (
+                  <div className="space-y-4">
+                    <div className="bg-green-50 border border-green-200 rounded-lg p-4">
+                      <div className="flex items-start">
+                        <div className="flex-shrink-0">
+                          <svg className="h-5 w-5 text-green-600" fill="currentColor" viewBox="0 0 20 20">
+                            <path fillRule="evenodd" d="M10 18a8 8 0 100-16 8 8 0 000 16zm3.707-9.293a1 1 0 00-1.414-1.414L9 10.586 7.707 9.293a1 1 0 00-1.414 1.414l2 2a1 1 0 001.414 0l4-4z" clipRule="evenodd"/>
+                          </svg>
+                        </div>
+                        <div className="ml-3 flex-1">
+                          <h3 className="text-sm font-medium text-green-800">Integração Ativa</h3>
+                          <div className="mt-2 text-sm text-green-700 space-y-1">
+                            <p><strong>Conta:</strong> {metaAdsConfig.ad_account_name || metaAdsConfig.ad_account_id}</p>
+                            <p><strong>ID da Conta:</strong> {metaAdsConfig.ad_account_id}</p>
+                            {metaAdsConfig.last_sync && (
+                              <p><strong>Última Sincronização:</strong> {new Date(metaAdsConfig.last_sync).toLocaleString('pt-BR')}</p>
+                            )}
+                          </div>
+                        </div>
+                      </div>
+                    </div>
+
+                    <div className="flex justify-end">
+                      <button
+                        onClick={handleDeleteMetaAds}
+                        className="bg-red-600 text-white px-4 py-2 rounded-lg hover:bg-red-700 font-medium"
+                      >
+                        Remover Integração
+                      </button>
+                    </div>
+                  </div>
+                ) : (
+                  <MetaAdsForm onSubmit={handleSaveMetaAds} />
+                )}
+
+                {/* Instruções */}
+                <div className="mt-8 bg-blue-50 border border-blue-200 rounded-lg p-4">
+                  <h3 className="text-sm font-medium text-blue-900 mb-2">Como obter as credenciais:</h3>
+                  <ol className="list-decimal list-inside text-sm text-blue-800 space-y-2">
+                    <li>Acesse o <a href="https://business.facebook.com" target="_blank" rel="noopener noreferrer" className="underline hover:text-blue-600">Facebook Business Manager</a></li>
+                    <li>Vá em Configurações → Contas de Anúncios</li>
+                    <li>Copie o ID da conta (formato: act_XXXXX)</li>
+                    <li>Gere um Token de Acesso no <a href="https://developers.facebook.com/tools/explorer/" target="_blank" rel="noopener noreferrer" className="underline hover:text-blue-600">Graph API Explorer</a></li>
+                    <li>Selecione as permissões: ads_read, ads_management</li>
+                    <li>Copie o token gerado e cole abaixo</li>
+                  </ol>
+                </div>
+              </div>
+            </div>
+          )}
+        </>
+      )}
+
+      {/* Modal Pessoa */}
+      <Modal
+        isOpen={showPessoaModal}
+        title={editingItem ? 'Editar Pessoa' : 'Nova Pessoa'}
+        onClose={() => {
+          setShowPessoaModal(false);
+          setEditingItem(null);
+        }}
+      >
+        <PessoaForm
+          initialData={editingItem}
+          defaultFuncao={activeSubTab}
+          onSubmit={handleSavePessoa}
+          onClose={() => {
+            setShowPessoaModal(false);
+            setEditingItem(null);
+          }}
+        />
+      </Modal>
+
+      {/* Modal Produto */}
+      <Modal
+        isOpen={showProdutoModal}
+        title={editingItem ? 'Editar Produto' : 'Novo Produto'}
+        onClose={() => {
+          setShowProdutoModal(false);
+          setEditingItem(null);
+        }}
+      >
+        <ProdutoForm
+          initialData={editingItem}
+          onSubmit={handleSaveProduto}
+          onClose={() => {
+            setShowProdutoModal(false);
+            setEditingItem(null);
+          }}
+        />
+      </Modal>
+
+      {/* Modal Funil */}
+      <Modal
+        isOpen={showFunilModal}
+        title={editingItem ? 'Editar Funil' : 'Novo Funil'}
+        onClose={() => {
+          setShowFunilModal(false);
+          setEditingItem(null);
+        }}
+      >
+        <FunilForm
+          initialData={editingItem}
+          onSubmit={handleSaveFunil}
+          onClose={() => {
+            setShowFunilModal(false);
+            setEditingItem(null);
+          }}
+        />
+      </Modal>
+    </div>
+  );
+};
+
+// ==================== FORMULÁRIOS ====================
+
+const PessoaForm = ({ initialData, defaultFuncao, onSubmit, onClose }) => {
+  const [formData, setFormData] = useState({
+    nome: initialData?.nome || '',
+    funcao: initialData?.funcao || defaultFuncao || 'social_selling',
+    ativo: initialData?.ativo !== undefined ? initialData.ativo : true,
+    nivel_senioridade: initialData?.nivel_senioridade || 1
+  });
+
+  const handleChange = (e) => {
+    const { name, value, type, checked } = e.target;
+    setFormData(prev => ({
+      ...prev,
+      [name]: type === 'checkbox' ? checked : value
+    }));
+  };
+
+  const handleSubmit = (e) => {
+    e.preventDefault();
+
+    if (!formData.nome.trim()) {
+      alert('Nome é obrigatório');
+      return;
+    }
+
+    const data = {
+      ...formData,
+      nivel_senioridade: parseInt(formData.nivel_senioridade) || 1
+    };
+
+    onSubmit(data);
+  };
+
+  return (
+    <form onSubmit={handleSubmit} className="space-y-4">
+      <div>
+        <label className="block text-sm font-medium text-gray-700 mb-1">Nome *</label>
+        <input
+          type="text"
+          name="nome"
+          value={formData.nome}
+          onChange={handleChange}
+          className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-primary focus:border-transparent"
+          required
+        />
+      </div>
+
+      <div>
+        <label className="block text-sm font-medium text-gray-700 mb-1">Funcao *</label>
+        <select
+          name="funcao"
+          value={formData.funcao}
+          onChange={handleChange}
+          className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-primary focus:border-transparent"
+        >
+          <option value="social_selling">Social Selling</option>
+          <option value="sdr">SDR</option>
+          <option value="closer">Closer</option>
+        </select>
+      </div>
+
+      <div>
+        <label className="block text-sm font-medium text-gray-700 mb-1">Nível de Senioridade *</label>
+        <select
+          name="nivel_senioridade"
+          value={formData.nivel_senioridade}
+          onChange={handleChange}
+          className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-primary focus:border-transparent"
+        >
+          <option value="1">Nível 1 - Júnior I</option>
+          <option value="2">Nível 2 - Júnior II</option>
+          <option value="3">Nível 3 - Pleno I</option>
+          <option value="4">Nível 4 - Pleno II</option>
+          <option value="5">Nível 5 - Sênior</option>
+          <option value="6">Nível 6 - Especialista</option>
+          <option value="7">Nível 7 - C-Level</option>
+        </select>
+        <p className="mt-1 text-xs text-gray-500">Define o nível hierárquico da pessoa na equipe</p>
+      </div>
+
+      <div className="flex items-center">
+        <input
+          type="checkbox"
+          name="ativo"
+          checked={formData.ativo}
+          onChange={handleChange}
+          className="h-4 w-4 text-primary focus:ring-primary border-gray-300 rounded"
+        />
+        <label className="ml-2 text-sm text-gray-700">Ativo</label>
+      </div>
+
+      <div className="bg-blue-50 border border-blue-200 rounded-lg p-4">
+        <p className="text-sm text-blue-800">
+          <strong>Nota:</strong> As metas individuais agora são gerenciadas na aba "Metas" do sistema. Configure metas mensais específicas para cada pessoa.
+        </p>
+      </div>
+
+      <div className="flex justify-end space-x-3 pt-4">
+        <button
+          type="button"
+          onClick={onClose}
+          className="px-4 py-2 text-gray-700 bg-gray-100 rounded-lg hover:bg-gray-200"
+        >
+          Cancelar
+        </button>
+        <button
+          type="submit"
+          className="px-4 py-2 bg-primary text-white rounded-lg hover:bg-blue-600"
+        >
+          Salvar
+        </button>
+      </div>
+    </form>
+  );
+};
+
+const ProdutoForm = ({ initialData, onSubmit, onClose }) => {
+  const [formData, setFormData] = useState({
+    nome: initialData?.nome || '',
+    categoria: initialData?.categoria || '',
+    plano: initialData?.plano || '',
+    status: initialData?.status || 'ativo',
+    ativo: initialData?.ativo !== undefined ? initialData.ativo : true
+  });
+
+  const handleChange = (e) => {
+    const { name, value, type, checked } = e.target;
+    setFormData(prev => ({
+      ...prev,
+      [name]: type === 'checkbox' ? checked : value
+    }));
+  };
+
+  const handleSubmit = (e) => {
+    e.preventDefault();
+
+    if (!formData.nome.trim()) {
+      alert('Nome é obrigatório');
+      return;
+    }
+
+    // Enviar dados com plano único
+    onSubmit(formData);
+  };
+
+  return (
+    <form onSubmit={handleSubmit} className="space-y-4">
+      <div>
+        <label className="block text-sm font-medium text-gray-700 mb-1">Nome *</label>
+        <input
+          type="text"
+          name="nome"
+          value={formData.nome}
+          onChange={handleChange}
+          className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-primary focus:border-transparent"
+          required
+        />
+      </div>
+
+      <div>
+        <label className="block text-sm font-medium text-gray-700 mb-1">Categoria</label>
+        <select
+          name="categoria"
+          value={formData.categoria}
+          onChange={handleChange}
+          className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-primary focus:border-transparent"
+        >
+          <option value="">Selecione...</option>
+          <option value="Assessoria">Assessoria</option>
+          <option value="Consultoria">Consultoria</option>
+          <option value="Programa">Programa</option>
+          <option value="Servico">Serviço</option>
+          <option value="Outros">Outros</option>
+        </select>
+      </div>
+
+      <div>
+        <label className="block text-sm font-medium text-gray-700 mb-1">Plano</label>
+        <input
+          type="text"
+          name="plano"
+          value={formData.plano}
+          onChange={handleChange}
+          placeholder="Ex: Start, Select, Premium"
+          className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-primary focus:border-transparent"
+        />
+        <p className="mt-1 text-xs text-gray-500">Deixe em branco se o produto não tem planos específicos</p>
+      </div>
+
+      <div>
+        <label className="block text-sm font-medium text-gray-700 mb-1">Status</label>
+        <select
+          name="status"
+          value={formData.status}
+          onChange={handleChange}
+          className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-primary focus:border-transparent"
+        >
+          <option value="ativo">Ativo</option>
+          <option value="inativo">Inativo</option>
+        </select>
+      </div>
+
+      <div className="flex items-center">
+        <input
+          type="checkbox"
+          name="ativo"
+          checked={formData.ativo}
+          onChange={handleChange}
+          className="h-4 w-4 text-primary focus:ring-primary border-gray-300 rounded"
+        />
+        <label className="ml-2 text-sm text-gray-700">Ativo (visível no sistema)</label>
+      </div>
+
+      <div className="bg-blue-50 border border-blue-200 rounded-lg p-4">
+        <p className="text-sm text-blue-800">
+          <strong>Nota:</strong> Cada combinação de Produto + Plano é um registro separado. Para produtos com múltiplos planos, crie um registro para cada plano.
+        </p>
+      </div>
+
+      <div className="flex justify-end space-x-3 pt-4">
+        <button
+          type="button"
+          onClick={onClose}
+          className="px-4 py-2 text-gray-700 bg-gray-100 rounded-lg hover:bg-gray-200"
+        >
+          Cancelar
+        </button>
+        <button
+          type="submit"
+          className="px-4 py-2 bg-primary text-white rounded-lg hover:bg-blue-600"
+        >
+          Salvar
+        </button>
+      </div>
+    </form>
+  );
+};
+
+const FunilForm = ({ initialData, onSubmit, onClose }) => {
+  const [formData, setFormData] = useState({
+    nome: initialData?.nome || '',
+    descricao: initialData?.descricao || '',
+    ordem: initialData?.ordem || 0,
+    ativo: initialData?.ativo !== undefined ? initialData.ativo : true
+  });
+
+  const handleChange = (e) => {
+    const { name, value, type, checked } = e.target;
+    setFormData(prev => ({
+      ...prev,
+      [name]: type === 'checkbox' ? checked : value
+    }));
+  };
+
+  const handleSubmit = (e) => {
+    e.preventDefault();
+
+    if (!formData.nome.trim()) {
+      alert('Nome é obrigatório');
+      return;
+    }
+
+    const data = {
+      ...formData,
+      ordem: parseInt(formData.ordem) || 0
+    };
+
+    onSubmit(data);
+  };
+
+  return (
+    <form onSubmit={handleSubmit} className="space-y-4">
+      <div>
+        <label className="block text-sm font-medium text-gray-700 mb-1">Nome *</label>
+        <input
+          type="text"
+          name="nome"
+          value={formData.nome}
+          onChange={handleChange}
+          className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-primary focus:border-transparent"
+          required
+        />
+      </div>
+
+      <div>
+        <label className="block text-sm font-medium text-gray-700 mb-1">Descricao</label>
+        <input
+          type="text"
+          name="descricao"
+          value={formData.descricao}
+          onChange={handleChange}
+          className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-primary focus:border-transparent"
+        />
+      </div>
+
+      <div>
+        <label className="block text-sm font-medium text-gray-700 mb-1">Ordem</label>
+        <input
+          type="number"
+          name="ordem"
+          value={formData.ordem}
+          onChange={handleChange}
+          className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-primary focus:border-transparent"
+        />
+      </div>
+
+      <div className="flex items-center">
+        <input
+          type="checkbox"
+          name="ativo"
+          checked={formData.ativo}
+          onChange={handleChange}
+          className="h-4 w-4 text-primary focus:ring-primary border-gray-300 rounded"
+        />
+        <label className="ml-2 text-sm text-gray-700">Ativo</label>
+      </div>
+
+      <div className="flex justify-end space-x-3 pt-4">
+        <button
+          type="button"
+          onClick={onClose}
+          className="px-4 py-2 text-gray-700 bg-gray-100 rounded-lg hover:bg-gray-200"
+        >
+          Cancelar
+        </button>
+        <button
+          type="submit"
+          className="px-4 py-2 bg-primary text-white rounded-lg hover:bg-blue-600"
+        >
+          Salvar
+        </button>
+      </div>
+    </form>
+  );
+};
+
+const MetaAdsForm = ({ onSubmit }) => {
+  const [formData, setFormData] = useState({
+    access_token: '',
+    ad_account_id: ''
+  });
+  const [submitting, setSubmitting] = useState(false);
+
+  const handleChange = (e) => {
+    const { name, value } = e.target;
+    setFormData(prev => ({
+      ...prev,
+      [name]: value.trim()
+    }));
+  };
+
+  const handleSubmit = async (e) => {
+    e.preventDefault();
+
+    if (!formData.access_token.trim()) {
+      alert('Access Token é obrigatório');
+      return;
+    }
+
+    if (!formData.ad_account_id.trim()) {
+      alert('ID da Conta de Anúncios é obrigatório');
+      return;
+    }
+
+    // Validar formato do ad_account_id
+    if (!formData.ad_account_id.startsWith('act_')) {
+      alert('ID da conta deve começar com "act_" (exemplo: act_123456789)');
+      return;
+    }
+
+    setSubmitting(true);
+    try {
+      await onSubmit(formData);
+      // Limpar formulário após sucesso
+      setFormData({ access_token: '', ad_account_id: '' });
+    } catch (error) {
+      // Erro já é tratado no parent
+    } finally {
+      setSubmitting(false);
+    }
+  };
+
+  return (
+    <form onSubmit={handleSubmit} className="space-y-4">
+      <div>
+        <label className="block text-sm font-medium text-gray-700 mb-1">
+          Access Token *
+        </label>
+        <input
+          type="password"
+          name="access_token"
+          value={formData.access_token}
+          onChange={handleChange}
+          placeholder="EAAG..."
+          className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-primary focus:border-transparent font-mono text-sm"
+          required
+        />
+        <p className="mt-1 text-xs text-gray-500">
+          Token de acesso gerado no Graph API Explorer com permissões ads_read e ads_management
+        </p>
+      </div>
+
+      <div>
+        <label className="block text-sm font-medium text-gray-700 mb-1">
+          ID da Conta de Anúncios *
+        </label>
+        <input
+          type="text"
+          name="ad_account_id"
+          value={formData.ad_account_id}
+          onChange={handleChange}
+          placeholder="act_123456789"
+          className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-primary focus:border-transparent font-mono text-sm"
+          required
+        />
+        <p className="mt-1 text-xs text-gray-500">
+          ID da conta de anúncios encontrado no Business Manager (formato: act_XXXXX)
+        </p>
+      </div>
+
+      <div className="flex justify-end pt-4">
+        <button
+          type="submit"
+          disabled={submitting}
+          className={`px-6 py-2 bg-primary text-white rounded-lg font-medium ${
+            submitting
+              ? 'opacity-50 cursor-not-allowed'
+              : 'hover:bg-blue-600'
+          }`}
+        >
+          {submitting ? 'Validando...' : 'Salvar Configuração'}
+        </button>
+      </div>
+    </form>
+  );
+};
+
+export default Configuracoes;
