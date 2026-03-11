@@ -4,7 +4,6 @@ import { formatNumber, formatCurrency, formatPercent } from '../utils/formatters
 import { AlertTriangle, Zap, TrendingUp, TrendingDown, ChevronDown, Calendar, Filter, Maximize2, Expand } from 'lucide-react';
 import { LineChart, Line, AreaChart, Area, XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer, Legend } from 'recharts';
 import FunilBarras from '../components/FunilBarras';
-import MetricaIndividual from '../components/MetricaIndividual';
 import KPICard from '../components/KPICard';
 import SecaoExpansivel from '../components/SecaoExpansivel';
 import TabelaRanking from '../components/TabelaRanking';
