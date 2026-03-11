@@ -2,6 +2,9 @@ import React, { Suspense, lazy } from 'react';
 import { BrowserRouter as Router, Routes, Route, Navigate } from 'react-router-dom';
 import SidebarModern from './components/SidebarModern';
 import { ConfigProvider } from './context/ConfigContext';
+import ProtectedRoute from './components/ProtectedRoute';
+import SignInPage from './pages/SignIn';
+import SignUpPage from './pages/SignUp';
 
 // Lazy loading de páginas principais
 const Comercial = lazy(() => import('./pages/Comercial'));
@@ -42,6 +45,10 @@ function App() {
       <Router>
         <Suspense fallback={<LoadingFallback />}>
           <Routes>
+          {/* Rotas de autenticação (sem sidebar) */}
+          <Route path="/sign-in/*" element={<SignInPage />} />
+          <Route path="/sign-up/*" element={<SignUpPage />} />
+
           {/* Rotas públicas (sem sidebar) */}
           <Route path="/form/social-selling" element={<SocialSellingFormPublic />} />
           <Route path="/form/sdr" element={<SDRFormPublic />} />
@@ -50,41 +57,43 @@ function App() {
 
           {/* Rotas protegidas (com sidebar moderna) */}
           <Route path="/*" element={
-            <div className="flex min-h-screen bg-bg-main">
-              {/* Sidebar Fixa */}
-              <SidebarModern />
+            <ProtectedRoute>
+              <div className="flex min-h-screen bg-bg-main">
+                {/* Sidebar Fixa */}
+                <SidebarModern />
 
-              {/* Conteúdo Principal com margem para sidebar */}
-              <div className="flex-1 ml-64">
-                <Suspense fallback={
-                  <div className="flex items-center justify-center h-screen">
-                    <div className="text-center">
-                      <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-primary mx-auto mb-4"></div>
-                      <p className="text-text-secondary">Carregando página...</p>
+                {/* Conteúdo Principal com margem para sidebar */}
+                <div className="flex-1 ml-64">
+                  <Suspense fallback={
+                    <div className="flex items-center justify-center h-screen">
+                      <div className="text-center">
+                        <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-primary mx-auto mb-4"></div>
+                        <p className="text-text-secondary">Carregando página...</p>
+                      </div>
                     </div>
-                  </div>
-                }>
-                  <Routes>
-                    <Route path="/" element={<Navigate to="/comercial" replace />} />
-                    <Route path="/comercial" element={<Comercial />} />
-                    <Route path="/financeiro" element={<Financeiro />} />
-                    <Route path="/marketing" element={<Marketing />} />
-                    <Route path="/config" element={<Config />} />
+                  }>
+                    <Routes>
+                      <Route path="/" element={<Navigate to="/comercial" replace />} />
+                      <Route path="/comercial" element={<Comercial />} />
+                      <Route path="/financeiro" element={<Financeiro />} />
+                      <Route path="/marketing" element={<Marketing />} />
+                      <Route path="/config" element={<Config />} />
 
-                    {/* Rotas antigas mantidas para compatibilidade */}
-                    <Route path="/social-selling" element={<SocialSelling />} />
-                    <Route path="/sdr" element={<SDR />} />
-                    <Route path="/closer" element={<Closer />} />
-                    <Route path="/metas" element={<Metas />} />
-                    <Route path="/planejamento" element={<Planejamento />} />
-                    <Route path="/dfc" element={<DFC />} />
-                    <Route path="/dre" element={<DRE />} />
-                    <Route path="/upload" element={<Upload />} />
-                    <Route path="/configuracoes" element={<Configuracoes />} />
-                  </Routes>
-                </Suspense>
+                      {/* Rotas antigas mantidas para compatibilidade */}
+                      <Route path="/social-selling" element={<SocialSelling />} />
+                      <Route path="/sdr" element={<SDR />} />
+                      <Route path="/closer" element={<Closer />} />
+                      <Route path="/metas" element={<Metas />} />
+                      <Route path="/planejamento" element={<Planejamento />} />
+                      <Route path="/dfc" element={<DFC />} />
+                      <Route path="/dre" element={<DRE />} />
+                      <Route path="/upload" element={<Upload />} />
+                      <Route path="/configuracoes" element={<Configuracoes />} />
+                    </Routes>
+                  </Suspense>
+                </div>
               </div>
-            </div>
+            </ProtectedRoute>
           } />
         </Routes>
       </Suspense>

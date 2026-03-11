@@ -1,5 +1,6 @@
 import React from 'react';
 import { useNavigate, useLocation } from 'react-router-dom';
+import { UserButton, useUser } from '@clerk/react';
 
 /**
  * Sidebar Moderna - Design System 2026
@@ -8,10 +9,12 @@ import { useNavigate, useLocation } from 'react-router-dom';
  * - Active state com highlight
  * - Hover states suaves
  * - Logo MedGM
+ * - Clerk authentication with UserButton
  */
 const SidebarModern = () => {
   const navigate = useNavigate();
   const location = useLocation();
+  const { user } = useUser();
 
   const menuItems = [
     {
@@ -98,11 +101,32 @@ const SidebarModern = () => {
         </div>
       </nav>
 
-      {/* Footer */}
+      {/* Footer - User Profile */}
       <div className="p-4 border-t border-gray-200">
-        <div className="text-xs text-gray-500 text-center">
-          <p>v2.0.0</p>
-          <p className="mt-1">© 2026 MedGM</p>
+        <div className="flex items-center justify-between gap-3 mb-3">
+          <div className="flex items-center gap-3 flex-1 min-w-0">
+            <UserButton
+              appearance={{
+                elements: {
+                  avatarBox: "w-10 h-10",
+                  userButtonPopoverCard: "shadow-xl border border-gray-200"
+                }
+              }}
+            />
+            {user && (
+              <div className="flex-1 min-w-0">
+                <p className="text-sm font-semibold text-gray-900 truncate">
+                  {user.firstName || user.username || 'Usuário'}
+                </p>
+                <p className="text-xs text-gray-500 truncate">
+                  {user.primaryEmailAddress?.emailAddress}
+                </p>
+              </div>
+            )}
+          </div>
+        </div>
+        <div className="text-xs text-gray-400 text-center">
+          <p>v2.0.0 © 2026 MedGM</p>
         </div>
       </div>
     </aside>
