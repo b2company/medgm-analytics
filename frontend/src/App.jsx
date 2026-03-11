@@ -74,21 +74,59 @@ function App() {
                   }>
                     <Routes>
                       <Route path="/" element={<Navigate to="/comercial" replace />} />
-                      <Route path="/comercial" element={<Comercial />} />
-                      <Route path="/financeiro" element={<Financeiro />} />
-                      <Route path="/marketing" element={<Marketing />} />
-                      <Route path="/config" element={<Config />} />
 
-                      {/* Rotas antigas mantidas para compatibilidade */}
+                      {/* Rotas acessíveis a todos (usuários e admins) */}
+                      <Route path="/comercial" element={<Comercial />} />
                       <Route path="/social-selling" element={<SocialSelling />} />
                       <Route path="/sdr" element={<SDR />} />
                       <Route path="/closer" element={<Closer />} />
-                      <Route path="/metas" element={<Metas />} />
-                      <Route path="/planejamento" element={<Planejamento />} />
-                      <Route path="/dfc" element={<DFC />} />
-                      <Route path="/dre" element={<DRE />} />
-                      <Route path="/upload" element={<Upload />} />
-                      <Route path="/configuracoes" element={<Configuracoes />} />
+
+                      {/* Rotas apenas para ADMINS */}
+                      <Route path="/financeiro" element={
+                        <ProtectedRoute requireAdmin={true}>
+                          <Financeiro />
+                        </ProtectedRoute>
+                      } />
+                      <Route path="/marketing" element={
+                        <ProtectedRoute requireAdmin={true}>
+                          <Marketing />
+                        </ProtectedRoute>
+                      } />
+                      <Route path="/config" element={
+                        <ProtectedRoute requireAdmin={true}>
+                          <Config />
+                        </ProtectedRoute>
+                      } />
+                      <Route path="/metas" element={
+                        <ProtectedRoute requireAdmin={true}>
+                          <Metas />
+                        </ProtectedRoute>
+                      } />
+                      <Route path="/planejamento" element={
+                        <ProtectedRoute requireAdmin={true}>
+                          <Planejamento />
+                        </ProtectedRoute>
+                      } />
+                      <Route path="/dfc" element={
+                        <ProtectedRoute requireAdmin={true}>
+                          <DFC />
+                        </ProtectedRoute>
+                      } />
+                      <Route path="/dre" element={
+                        <ProtectedRoute requireAdmin={true}>
+                          <DRE />
+                        </ProtectedRoute>
+                      } />
+                      <Route path="/upload" element={
+                        <ProtectedRoute requireAdmin={true}>
+                          <Upload />
+                        </ProtectedRoute>
+                      } />
+                      <Route path="/configuracoes" element={
+                        <ProtectedRoute requireAdmin={true}>
+                          <Configuracoes />
+                        </ProtectedRoute>
+                      } />
                     </Routes>
                   </Suspense>
                 </div>
