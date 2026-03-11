@@ -356,11 +356,17 @@ return (
                     <ResponsiveContainer width="100%" height={120}>
                       <LineChart data={dadosVendasCompletos}>
                         <CartesianGrid strokeDasharray="3 3" stroke="#e2e8f0" />
-                        <XAxis dataKey="dia" type="number" domain={[1, new Date(ano, mes, 0).getDate()]} tick={{ fontSize: 8 }} />
+                        <XAxis
+                          dataKey="dia"
+                          type="number"
+                          domain={[1, new Date(ano, mes, 0).getDate()]}
+                          ticks={[1, 5, 10, 15, 20, 25, new Date(ano, mes, 0).getDate()]}
+                          tick={{ fontSize: 8 }}
+                        />
                         <YAxis tick={{ fontSize: 8 }} allowDecimals={false} />
                         <Tooltip formatter={(value) => Math.round(value)} contentStyle={{ fontSize: '10px' }} />
-                        <Line dataKey="meta_acumulada" stroke="#94a3b8" strokeWidth={1.5} dot={false} />
-                        <Line dataKey="acumulado" stroke="#3b82f6" strokeWidth={1.5} dot={{ r: 1.5 }} />
+                        <Line dataKey="meta_acumulada" stroke="#94a3b8" strokeWidth={1.5} dot={false} name="Meta" />
+                        <Line dataKey="acumulado" stroke="#3b82f6" strokeWidth={1.5} dot={{ r: 1.5 }} name="Realizado" />
                       </LineChart>
                     </ResponsiveContainer>
                   </div>
@@ -369,11 +375,17 @@ return (
                     <ResponsiveContainer width="100%" height={120}>
                       <LineChart data={dadosFaturamentoCompletos}>
                         <CartesianGrid strokeDasharray="3 3" stroke="#e2e8f0" />
-                        <XAxis dataKey="dia" type="number" domain={[1, new Date(ano, mes, 0).getDate()]} tick={{ fontSize: 8 }} />
+                        <XAxis
+                          dataKey="dia"
+                          type="number"
+                          domain={[1, new Date(ano, mes, 0).getDate()]}
+                          ticks={[1, 5, 10, 15, 20, 25, new Date(ano, mes, 0).getDate()]}
+                          tick={{ fontSize: 8 }}
+                        />
                         <YAxis tick={{ fontSize: 8 }} tickFormatter={(v) => `${(v / 1000).toFixed(0)}k`} />
                         <Tooltip formatter={(v) => formatCurrency(v)} contentStyle={{ fontSize: '10px' }} />
-                        <Line dataKey="meta_acumulada" stroke="#94a3b8" strokeWidth={1.5} dot={false} />
-                        <Line dataKey="acumulado" stroke="#10b981" strokeWidth={1.5} dot={{ r: 1.5 }} />
+                        <Line dataKey="meta_acumulada" stroke="#94a3b8" strokeWidth={1.5} dot={false} name="Meta" />
+                        <Line dataKey="acumulado" stroke="#10b981" strokeWidth={1.5} dot={{ r: 1.5 }} name="Realizado" />
                       </LineChart>
                     </ResponsiveContainer>
                   </div>
