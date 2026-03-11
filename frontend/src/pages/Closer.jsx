@@ -1,4 +1,5 @@
 import React, { useState, useEffect } from 'react';
+import { useUser } from '@clerk/react';
 import Modal from '../components/Modal';
 import CloserForm from '../components/CloserForm';
 import UploadComercialModal from '../components/UploadComercialModal';
@@ -23,6 +24,8 @@ import { formatNumber, formatCurrency, formatPercent } from '../utils/formatters
 const API_URL = import.meta.env.VITE_API_URL || 'http://localhost:8000';
 
 const Closer = ({ mes: mesProp, ano: anoProp }) => {
+  const { user } = useUser();
+  const isAdmin = user?.publicMetadata?.orgRole === 'admin';
   const [metricas, setMetricas] = useState([]);
   const [dashboard, setDashboard] = useState(null);
   const [dashboardDiario, setDashboardDiario] = useState(null);
@@ -863,13 +866,13 @@ const Closer = ({ mes: mesProp, ano: anoProp }) => {
               { key: 'ticket_medio', label: 'Ticket', format: 'currency', sortable: true, align: 'right' }
             ]}
             data={metricasFiltradas}
-            editableColumns={['closer', 'funil', 'calls_agendadas', 'calls_realizadas', 'vendas', 'faturamento_bruto']}
+            editableColumns={isAdmin ? ['closer', 'funil', 'calls_agendadas', 'calls_realizadas', 'vendas', 'faturamento_bruto'] : []}
             showTotal={false}
-            showActions={true}
-            onUpdate={handleInlineUpdate}
-            onDelete={handleDelete}
-            enableBulkSelect={true}
-            onBulkDelete={handleBulkDelete}
+            showActions={isAdmin}
+            onUpdate={isAdmin ? handleInlineUpdate : null}
+            onDelete={isAdmin ? handleDelete : null}
+            enableBulkSelect={isAdmin}
+            onBulkDelete={isAdmin ? handleBulkDelete : null}
             rowKeyField="id"
           />
         )}

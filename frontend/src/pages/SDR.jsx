@@ -1,4 +1,5 @@
 import React, { useState, useEffect } from 'react';
+import { useUser } from '@clerk/react';
 import Modal from '../components/Modal';
 import SDRForm from '../components/SDRForm';
 import UploadComercialModal from '../components/UploadComercialModal';
@@ -24,6 +25,8 @@ import { formatNumber, formatPercent } from '../utils/formatters';
 const API_URL = import.meta.env.VITE_API_URL || 'http://localhost:8000';
 
 const SDR = ({ mes: mesProp, ano: anoProp }) => {
+  const { user } = useUser();
+  const isAdmin = user?.publicMetadata?.orgRole === 'admin';
   const [metricas, setMetricas] = useState([]);
   const [dashboard, setDashboard] = useState(null);
   const [dashboardDiario, setDashboardDiario] = useState(null);
@@ -347,7 +350,9 @@ const SDR = ({ mes: mesProp, ano: anoProp }) => {
         <p className="text-gray-600 mt-2">Metricas de qualificacao e agendamento de reunioes</p>
       </div>
 
-      <div className="flex justify-end items-center mb-6 gap-3">
+      {/* Acoes - Apenas para Admins */}
+      {isAdmin && (
+        <div className="flex justify-end items-center mb-6 gap-3">
           <button
             onClick={handleExport}
             className="bg-green-600 text-white px-4 py-2 rounded-lg hover:bg-green-700 font-medium"
@@ -366,10 +371,11 @@ const SDR = ({ mes: mesProp, ano: anoProp }) => {
           >
             📤 Upload em Massa
           </button>
-      </div>
+        </div>
+      )}
 
-      {/* Filtros */}
-      {dashboardDiario && (
+      {/* Filtros - Apenas para Admins */}
+      {isAdmin && dashboardDiario && (
         <div className="grid grid-cols-1 md:grid-cols-2 gap-4 mb-6">
           {dashboardDiario.sdrs && dashboardDiario.sdrs.length > 0 && (
             <div>
@@ -691,13 +697,13 @@ const SDR = ({ mes: mesProp, ano: anoProp }) => {
               { key: 'meta_reunioes', label: 'Meta', sortable: true, align: 'center' }
             ]}
             data={metricasFiltradas}
-            editableColumns={['sdr', 'funil', 'leads_recebidos', 'reunioes_agendadas', 'reunioes_realizadas', 'meta_reunioes']}
+            editableColumns={isAdmin ? ['sdr', 'funil', 'leads_recebidos', 'reunioes_agendadas', 'reunioes_realizadas', 'meta_reunioes'] : []}
             showTotal={false}
-            showActions={true}
-            onUpdate={handleInlineUpdate}
-            onDelete={handleDelete}
-            enableBulkSelect={true}
-            onBulkDelete={handleBulkDelete}
+            showActions={isAdmin}
+            onUpdate={isAdmin ? handleInlineUpdate : null}
+            onDelete={isAdmin ? handleDelete : null}
+            enableBulkSelect={isAdmin}
+            onBulkDelete={isAdmin ? handleBulkDelete : null}
             rowKeyField="id"
           />
         )}

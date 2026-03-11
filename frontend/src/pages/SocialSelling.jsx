@@ -1,4 +1,5 @@
 import React, { useState, useEffect } from 'react';
+import { useUser } from '@clerk/react';
 import Modal from '../components/Modal';
 import SocialSellingForm from '../components/SocialSellingForm';
 import UploadComercialModal from '../components/UploadComercialModal';
@@ -23,6 +24,8 @@ import { formatNumber, formatPercent } from '../utils/formatters';
 const API_URL = import.meta.env.VITE_API_URL || 'http://localhost:8000';
 
 const SocialSelling = ({ mes: mesProp, ano: anoProp }) => {
+  const { user } = useUser();
+  const isAdmin = user?.publicMetadata?.orgRole === 'admin';
   const [metricas, setMetricas] = useState([]);
   const [dashboard, setDashboard] = useState(null);
   const [dashboardDiario, setDashboardDiario] = useState(null);
@@ -413,33 +416,35 @@ const SocialSelling = ({ mes: mesProp, ano: anoProp }) => {
           <p className="text-gray-500 mt-2 text-lg">Acompanhamento de métricas de marketing e ativação</p>
         </div>
 
-        {/* Acoes */}
-        <div className="flex justify-end items-center mb-8 gap-4">
-          <button
-            onClick={handleExport}
-            className="bg-white text-gray-900 px-5 py-2.5 rounded-xl hover:bg-gray-50 transition-all font-medium shadow-md border border-gray-100"
-          >
-            📊 Exportar Excel
-          </button>
-          <button
-            onClick={() => {
-              setEditingMetrica(null);
-              setShowModal(true);
-            }}
-            className="bg-gradient-to-r from-amber-400 to-amber-500 text-white px-6 py-2.5 rounded-xl hover:shadow-lg transition-all font-medium shadow-md"
-          >
-            + Nova Métrica
-          </button>
-          <button
-            onClick={() => setShowUploadModal(true)}
-            className="bg-gray-900 text-white px-6 py-2.5 rounded-xl hover:bg-gray-950 transition-all font-medium shadow-md"
-          >
-            📤 Upload em Massa
-          </button>
-        </div>
+        {/* Acoes - Apenas para Admins */}
+        {isAdmin && (
+          <div className="flex justify-end items-center mb-8 gap-4">
+            <button
+              onClick={handleExport}
+              className="bg-white text-gray-900 px-5 py-2.5 rounded-xl hover:bg-gray-50 transition-all font-medium shadow-md border border-gray-100"
+            >
+              📊 Exportar Excel
+            </button>
+            <button
+              onClick={() => {
+                setEditingMetrica(null);
+                setShowModal(true);
+              }}
+              className="bg-gradient-to-r from-amber-400 to-amber-500 text-white px-6 py-2.5 rounded-xl hover:shadow-lg transition-all font-medium shadow-md"
+            >
+              + Nova Métrica
+            </button>
+            <button
+              onClick={() => setShowUploadModal(true)}
+              className="bg-gray-900 text-white px-6 py-2.5 rounded-xl hover:bg-gray-950 transition-all font-medium shadow-md"
+            >
+              📤 Upload em Massa
+            </button>
+          </div>
+        )}
 
-      {/* Filtros */}
-      {dashboardDiario && (
+      {/* Filtros - Apenas para Admins */}
+      {isAdmin && dashboardDiario && (
         <div className="grid grid-cols-1 md:grid-cols-2 gap-6 mb-8">
           {dashboardDiario.vendedores && dashboardDiario.vendedores.length > 0 && (
             <div className="bg-white p-5 rounded-2xl shadow-md border border-gray-50">
@@ -724,13 +729,13 @@ const SocialSelling = ({ mes: mesProp, ano: anoProp }) => {
               { key: 'tx_conv_lead', label: 'Tx Conv→Lead', format: 'percent', sortable: true, align: 'center' }
             ]}
             data={metricasFiltradas}
-            editableColumns={['vendedor', 'ativacoes', 'conversoes', 'leads_gerados']}
+            editableColumns={isAdmin ? ['vendedor', 'ativacoes', 'conversoes', 'leads_gerados'] : []}
             showTotal={false}
-            showActions={true}
-            onUpdate={handleInlineUpdate}
-            onDelete={handleDelete}
-            enableBulkSelect={true}
-            onBulkDelete={handleBulkDelete}
+            showActions={isAdmin}
+            onUpdate={isAdmin ? handleInlineUpdate : null}
+            onDelete={isAdmin ? handleDelete : null}
+            enableBulkSelect={isAdmin}
+            onBulkDelete={isAdmin ? handleBulkDelete : null}
             rowKeyField="id"
           />
         )}
