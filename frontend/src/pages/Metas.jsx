@@ -17,6 +17,7 @@ const Metas = ({ mes: mesProp, ano: anoProp }) => {
   const mes = mesProp || new Date().getMonth() + 1;
   const ano = anoProp || new Date().getFullYear();
   const [metas, setMetas] = useState([]);
+  const [metasGerais, setMetasGerais] = useState({ meta_leads_marketing: 0 });
   const [loading, setLoading] = useState(false);
 
   // Usar contexto para pessoas
@@ -30,7 +31,8 @@ const Metas = ({ mes: mesProp, ano: anoProp }) => {
     meta_reunioes_agendadas: '',
     meta_reunioes: '',
     meta_vendas: '',
-    meta_faturamento: ''
+    meta_faturamento: '',
+    meta_leads_marketing: ''
   });
 
   const meses = [
@@ -53,6 +55,13 @@ const Metas = ({ mes: mesProp, ano: anoProp }) => {
     try {
       const metasRes = await getMetas(mes, ano);
       setMetas(metasRes.metas || []);
+
+      // Carregar meta geral de Leads Marketing
+      const metaGeral = (metasRes.metas || []).find(m => m.tipo === 'geral');
+      if (metaGeral) {
+        setMetasGerais({ meta_leads_marketing: metaGeral.meta_leads_marketing || 0 });
+      }
+
       // Pessoas vêm do contexto, mas garantir que estejam carregadas
       if (pessoas.length === 0) {
         console.log('📥 Carregando pessoas do contexto...');
@@ -126,6 +135,23 @@ const Metas = ({ mes: mesProp, ano: anoProp }) => {
         await createMeta(data);
       }
 
+      // Salvar Meta Global de Leads Marketing se preenchida
+      if (formData.meta_leads_marketing) {
+        const metaGeralExistente = metas.find(m => m.tipo === 'geral');
+        const dataGeral = {
+          mes,
+          ano,
+          tipo: 'geral',
+          meta_leads_marketing: parseInt(formData.meta_leads_marketing)
+        };
+
+        if (metaGeralExistente) {
+          await updateMeta(metaGeralExistente.id, dataGeral);
+        } else {
+          await createMeta(dataGeral);
+        }
+      }
+
       setShowModal(false);
       setEditingMeta(null);
       setFormData({
@@ -135,7 +161,8 @@ const Metas = ({ mes: mesProp, ano: anoProp }) => {
         meta_reunioes_agendadas: '',
         meta_reunioes: '',
         meta_vendas: '',
-        meta_faturamento: ''
+        meta_faturamento: '',
+        meta_leads_marketing: ''
       });
       await loadData();
       alert(editingMeta ? 'Meta atualizada!' : 'Meta criada!');
@@ -157,7 +184,8 @@ const Metas = ({ mes: mesProp, ano: anoProp }) => {
       meta_reunioes_agendadas: meta.meta_reunioes_agendadas?.toString() || '',
       meta_reunioes: meta.meta_reunioes?.toString() || '',
       meta_vendas: meta.meta_vendas?.toString() || '',
-      meta_faturamento: meta.meta_faturamento?.toString() || ''
+      meta_faturamento: meta.meta_faturamento?.toString() || '',
+      meta_leads_marketing: metasGerais.meta_leads_marketing?.toString() || ''
     });
     setShowModal(true);
   };
@@ -232,7 +260,7 @@ const Metas = ({ mes: mesProp, ano: anoProp }) => {
   return (
     <div className="max-w-7xl mx-auto py-8 px-4">
       {/* Header */}
-      <div className="flex flex-col md:flex-row justify-between items-start md:items-center mb-8 gap-4">
+      <div className="flex flex-col md:flex-row justify-between items-start md:items-center mb-4 gap-4">
         <h1 className="text-3xl font-bold text-gray-900">Gestao de Metas - {meses.find(m => m.value === mes)?.label} {ano}</h1>
         <div className="flex flex-wrap gap-3 items-center">
           <button
@@ -259,7 +287,8 @@ const Metas = ({ mes: mesProp, ano: anoProp }) => {
                 meta_reunioes_agendadas: '',
                 meta_reunioes: '',
                 meta_vendas: '',
-                meta_faturamento: ''
+                meta_faturamento: '',
+                meta_leads_marketing: metasGerais.meta_leads_marketing?.toString() || ''
               });
               setShowModal(true);
             }}
@@ -494,6 +523,23 @@ const Metas = ({ mes: mesProp, ano: anoProp }) => {
               placeholder="0.00"
               min="0"
             />
+          </div>
+
+          <div className="border-t border-gray-200 pt-4 mt-4">
+            <label className="block text-sm font-medium text-gray-700 mb-1">
+              Meta Leads Marketing - GLOBAL (Quiz + Isca + Outros)
+            </label>
+            <input
+              type="number"
+              value={formData.meta_leads_marketing}
+              onChange={(e) => setFormData({ ...formData, meta_leads_marketing: e.target.value })}
+              className="w-full border border-gray-300 rounded-lg px-3 py-2 focus:ring-2 focus:ring-primary"
+              placeholder="0"
+              min="0"
+            />
+            <p className="mt-1 text-xs text-gray-500">
+              Meta global de leads de marketing (não vinculada a pessoa específica)
+            </p>
           </div>
 
           <div className="flex gap-3 pt-4">
