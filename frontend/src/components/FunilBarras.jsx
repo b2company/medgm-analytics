@@ -4,12 +4,12 @@ import { ArrowDown } from 'lucide-react';
 const FunilBarras = ({ stages }) => {
   const getStatusColor = (index) => {
     const colors = [
-      'bg-blue-500',
-      'bg-indigo-500',
-      'bg-purple-500',
-      'bg-emerald-500'
+      'bg-gradient-to-r from-blue-500 to-blue-600',
+      'bg-gradient-to-r from-indigo-500 to-indigo-600',
+      'bg-gradient-to-r from-purple-500 to-purple-600',
+      'bg-gradient-to-r from-emerald-500 to-emerald-600'
     ];
-    return colors[index] || 'bg-slate-500';
+    return colors[index] || 'bg-gradient-to-r from-slate-500 to-slate-600';
   };
 
   // Larguras fixas decrescentes
@@ -39,18 +39,18 @@ const FunilBarras = ({ stages }) => {
             : null;
 
           return (
-            <div key={index} className="space-y-0.5">
+            <div key={index} className="space-y-1">
               {/* Barra Centralizada */}
               <div className="flex flex-col items-center gap-1">
-                <span className="text-[9px] font-medium text-slate-700">{stage.name}</span>
+                <span className="text-[10px] font-bold text-slate-800">{stage.name}</span>
                 <div
-                  className="relative"
+                  className="relative group"
                   style={{ width: getWidth(index, stages.length) }}
                 >
                   <div
-                    className={`h-6 ${getStatusColor(index)} rounded-lg transition-all duration-500 flex items-center justify-center shadow-sm`}
+                    className={`h-8 ${getStatusColor(index)} rounded-xl transition-all duration-500 flex items-center justify-center shadow-lg hover:shadow-xl hover:scale-105 backdrop-blur-sm`}
                   >
-                    <span className="text-white font-bold text-[10px]">{stage.value.toLocaleString()}</span>
+                    <span className="text-white font-extrabold text-[11px] drop-shadow-md">{stage.value.toLocaleString()}</span>
                   </div>
                 </div>
               </div>
@@ -58,7 +58,7 @@ const FunilBarras = ({ stages }) => {
               {/* Taxa de Conversão */}
               {conversion && (
                 <div className="flex items-center justify-center">
-                  <div className="text-[8px] font-semibold text-slate-600 bg-slate-100 px-2 py-0.5 rounded-full">
+                  <div className="text-[9px] font-bold text-slate-700 bg-gradient-to-br from-slate-100/90 to-white/80 backdrop-blur-sm px-2.5 py-1 rounded-full shadow-md border border-slate-200/40">
                     ↓ {conversion}%
                   </div>
                 </div>

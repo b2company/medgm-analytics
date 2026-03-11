@@ -3,9 +3,9 @@ import { TrendingUp, TrendingDown } from 'lucide-react';
 
 const TabelaRanking = ({ titulo, cor = 'blue', colunas, dados, metricaPrincipal }) => {
   const cores = {
-    blue: { bg: 'bg-blue-50', border: 'border-blue-200', text: 'text-blue-900', barBom: 'bg-emerald-500', barMedio: 'bg-amber-500', barRuim: 'bg-red-500' },
-    purple: { bg: 'bg-purple-50', border: 'border-purple-200', text: 'text-purple-900', barBom: 'bg-emerald-500', barMedio: 'bg-amber-500', barRuim: 'bg-red-500' },
-    emerald: { bg: 'bg-emerald-50', border: 'border-emerald-200', text: 'text-emerald-900', barBom: 'bg-emerald-500', barMedio: 'bg-amber-500', barRuim: 'bg-red-500' }
+    blue: { bg: 'bg-gradient-to-r from-blue-50/90 to-blue-100/80', border: 'border-blue-200/50', text: 'text-blue-900', barBom: 'bg-gradient-to-r from-emerald-500 to-emerald-600', barMedio: 'bg-gradient-to-r from-amber-500 to-amber-600', barRuim: 'bg-gradient-to-r from-red-500 to-red-600' },
+    purple: { bg: 'bg-gradient-to-r from-purple-50/90 to-purple-100/80', border: 'border-purple-200/50', text: 'text-purple-900', barBom: 'bg-gradient-to-r from-emerald-500 to-emerald-600', barMedio: 'bg-gradient-to-r from-amber-500 to-amber-600', barRuim: 'bg-gradient-to-r from-red-500 to-red-600' },
+    emerald: { bg: 'bg-gradient-to-r from-emerald-50/90 to-emerald-100/80', border: 'border-emerald-200/50', text: 'text-emerald-900', barBom: 'bg-gradient-to-r from-emerald-500 to-emerald-600', barMedio: 'bg-gradient-to-r from-amber-500 to-amber-600', barRuim: 'bg-gradient-to-r from-red-500 to-red-600' }
   };
 
   const getStatusBarra = (percentual) => {
@@ -28,23 +28,23 @@ const TabelaRanking = ({ titulo, cor = 'blue', colunas, dados, metricaPrincipal 
   });
 
   return (
-    <div className="border border-slate-200 rounded-xl overflow-hidden bg-white">
-      <div className={`px-3 py-1.5 ${cores[cor].bg} border-b ${cores[cor].border}`}>
-        <span className={`font-bold text-xs ${cores[cor].text}`}>{titulo}</span>
+    <div className="border border-white/40 rounded-xl overflow-hidden backdrop-blur-md bg-white/80 shadow-lg hover:shadow-xl transition-all duration-300">
+      <div className={`px-3 py-2 ${cores[cor].bg} border-b ${cores[cor].border} backdrop-blur-sm`}>
+        <span className={`font-bold text-sm ${cores[cor].text}`}>{titulo}</span>
       </div>
 
       <div className="overflow-x-auto">
         <table className="w-full text-[10px]">
           <thead>
-            <tr className="bg-slate-50 border-b border-slate-200">
-              <th className="px-2 py-1.5 text-left font-semibold text-slate-600 text-[9px]">Atendente</th>
+            <tr className="bg-gradient-to-r from-slate-50/90 to-white/80 backdrop-blur-sm border-b border-slate-200/50">
+              <th className="px-2 py-2 text-left font-bold text-slate-700 text-[10px]">Atendente</th>
               {colunas.map((col, idx) => (
-                <th key={idx} className="px-2 py-1.5 text-center font-semibold text-slate-600 text-[9px]">{col.label}</th>
+                <th key={idx} className="px-2 py-2 text-center font-bold text-slate-700 text-[10px]">{col.label}</th>
               ))}
-              <th className="px-2 py-1.5 text-center font-semibold text-slate-600 text-[9px]">Status</th>
+              <th className="px-2 py-2 text-center font-bold text-slate-700 text-[10px]">Status</th>
             </tr>
           </thead>
-          <tbody>
+          <tbody className="backdrop-blur-sm">
             {dadosOrdenados.map((item, idx) => {
               const percentual = item.meta > 0 ? (item.valor / item.meta) * 100 : 0;
               const status = getStatusBadge(percentual);
@@ -52,18 +52,18 @@ const TabelaRanking = ({ titulo, cor = 'blue', colunas, dados, metricaPrincipal 
               return (
                 <tr
                   key={idx}
-                  className={`border-b border-slate-100 hover:bg-slate-50 transition-colors cursor-pointer ${idx % 2 === 0 ? 'bg-white' : 'bg-slate-50/50'}`}
+                  className={`border-b border-white/30 hover:bg-white/60 transition-all duration-200 cursor-pointer ${idx % 2 === 0 ? 'bg-white/40' : 'bg-slate-50/40'}`}
                 >
                   {/* Barra colorida lateral + Nome */}
-                  <td className="px-2 py-1.5 relative">
-                    <div className={`absolute left-0 top-0 bottom-0 w-1 ${getStatusBarra(percentual)}`}></div>
-                    <div className="flex items-center gap-1.5 pl-1.5">
-                      <div className="w-6 h-6 rounded-full bg-gradient-to-br from-slate-200 to-slate-300 flex items-center justify-center text-[9px] font-bold text-slate-600">
+                  <td className="px-2 py-2 relative">
+                    <div className={`absolute left-0 top-0 bottom-0 w-1 rounded-l-lg ${getStatusBarra(percentual)} shadow-md`}></div>
+                    <div className="flex items-center gap-2 pl-2">
+                      <div className="w-7 h-7 rounded-full bg-gradient-to-br from-slate-300 to-slate-400 flex items-center justify-center text-[9px] font-bold text-white shadow-lg backdrop-blur-sm border border-white/40">
                         {item.nome.substring(0, 2).toUpperCase()}
                       </div>
                       <div>
-                        <div className="font-semibold text-slate-900 text-[10px]">{item.nome}</div>
-                        <div className="text-[8px] text-slate-500">{item.role}</div>
+                        <div className="font-bold text-slate-900 text-[10px]">{item.nome}</div>
+                        <div className="text-[9px] text-slate-600 font-medium">{item.role}</div>
                       </div>
                     </div>
                   </td>
@@ -74,18 +74,18 @@ const TabelaRanking = ({ titulo, cor = 'blue', colunas, dados, metricaPrincipal 
                     const isPrincipal = col.key === metricaPrincipal;
 
                     return (
-                      <td key={colIdx} className="px-2 py-1.5 text-center">
+                      <td key={colIdx} className="px-2 py-2 text-center">
                         {isPrincipal ? (
                           <div className="flex flex-col items-center">
-                            <span className={`font-bold text-[10px] px-1.5 py-0.5 rounded ${percentual >= 80 ? 'bg-emerald-100 text-emerald-700' : percentual >= 50 ? 'bg-amber-100 text-amber-700' : 'bg-red-100 text-red-700'}`}>
+                            <span className={`font-extrabold text-[11px] px-2 py-1 rounded-lg shadow-md backdrop-blur-sm ${percentual >= 80 ? 'bg-emerald-100/90 text-emerald-700' : percentual >= 50 ? 'bg-amber-100/90 text-amber-700' : 'bg-red-100/90 text-red-700'}`}>
                               {col.formatter ? col.formatter(valorCol) : valorCol}
                             </span>
-                            <span className="text-[8px] text-slate-500 mt-0.5">
+                            <span className="text-[9px] text-slate-600 font-semibold mt-0.5">
                               {col.formatter ? col.formatter(item.meta) : item.meta}
                             </span>
                           </div>
                         ) : (
-                          <span className="font-semibold text-slate-700 text-[10px]">
+                          <span className="font-bold text-slate-800 text-[10px]">
                             {col.formatter ? col.formatter(valorCol) : valorCol || '-'}
                           </span>
                         )}
@@ -94,8 +94,8 @@ const TabelaRanking = ({ titulo, cor = 'blue', colunas, dados, metricaPrincipal 
                   })}
 
                   {/* Status - Percentual */}
-                  <td className="px-2 py-1.5 text-center">
-                    <span className={`text-[10px] font-bold px-1.5 py-0.5 rounded ${status.color}`}>
+                  <td className="px-2 py-2 text-center">
+                    <span className={`text-[11px] font-extrabold px-2 py-1 rounded-lg ${status.color} shadow-md backdrop-blur-sm`}>
                       {percentual.toFixed(0)}%
                     </span>
                   </td>

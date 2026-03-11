@@ -97,10 +97,11 @@ const DashboardGeralExecutivo = ({ mes: mesProp, ano: anoProp }) => {
 
   if (loading) {
     return (
-      <div className="flex justify-center items-center h-screen bg-slate-50">
-        <div className="text-center">
-          <div className="inline-block animate-spin rounded-full h-16 w-16 border-4 border-blue-600 border-t-transparent"></div>
-          <p className="mt-4 text-slate-600 font-medium">Carregando dashboard...</p>
+      <div className="flex justify-center items-center h-screen bg-gradient-to-br from-blue-50 via-slate-50 to-indigo-50">
+        <div className="text-center backdrop-blur-xl bg-white/80 border border-white/40 rounded-2xl shadow-2xl p-12">
+          <div className="inline-block animate-spin rounded-full h-16 w-16 border-4 border-blue-600 border-t-transparent mb-6"></div>
+          <p className="text-lg text-slate-800 font-bold">Carregando dashboard...</p>
+          <p className="text-sm text-slate-600 mt-2">Aguarde enquanto processamos seus dados</p>
         </div>
       </div>
     );
@@ -108,11 +109,11 @@ const DashboardGeralExecutivo = ({ mes: mesProp, ano: anoProp }) => {
 
   if (!data) {
     return (
-      <div className="flex items-center justify-center h-screen bg-slate-50">
-        <div className="text-center">
+      <div className="flex items-center justify-center h-screen bg-gradient-to-br from-blue-50 via-slate-50 to-indigo-50">
+        <div className="text-center backdrop-blur-xl bg-white/80 border border-white/40 rounded-2xl shadow-2xl p-12">
           <div className="text-6xl mb-4">📊</div>
-          <p className="text-xl text-slate-700 font-semibold">Nenhum dado disponível</p>
-          <p className="text-slate-500 mt-2">Tente selecionar outro período</p>
+          <p className="text-2xl text-slate-900 font-extrabold mb-2">Nenhum dado disponível</p>
+          <p className="text-slate-600 font-semibold">Tente selecionar outro período</p>
         </div>
       </div>
     );
@@ -208,31 +209,31 @@ const DashboardGeralExecutivo = ({ mes: mesProp, ano: anoProp }) => {
   const dadosFaturamentoCompletos = comercial.acumulado_faturamento || [];
 
 return (
-    <div className={`h-screen overflow-hidden flex flex-col ${tvMode ? 'fixed inset-0 z-50 bg-gradient-to-br from-slate-50 via-blue-50/30 to-slate-50' : 'bg-gradient-to-br from-slate-50 via-blue-50/30 to-slate-50'}`}>
-      {/* HEADER COMPACTO */}
-      <div className="shrink-0 bg-white border-b border-slate-200 px-6 py-3">
+    <div className={`h-screen overflow-hidden flex flex-col ${tvMode ? 'fixed inset-0 z-50 bg-gradient-to-br from-blue-50 via-slate-50 to-indigo-50' : 'bg-gradient-to-br from-blue-50 via-slate-50 to-indigo-50'}`}>
+      {/* HEADER GLASSMORPHISM */}
+      <div className="shrink-0 backdrop-blur-xl bg-white/80 border-b border-white/40 shadow-lg px-6 py-3">
         <div className="flex items-center justify-between">
           <div>
-            <h1 className="text-xl font-bold text-slate-900">MedGM Analytics</h1>
-            <p className="text-xs text-slate-500">{getMesNome(mes)} {ano} • {getDataHoraAtual()}</p>
+            <h1 className="text-2xl font-extrabold bg-gradient-to-r from-blue-600 to-indigo-600 bg-clip-text text-transparent">MedGM Analytics</h1>
+            <p className="text-xs text-slate-600 font-semibold">{getMesNome(mes)} {ano} • {getDataHoraAtual()}</p>
           </div>
           <div className="flex items-center gap-2">
-            <button onClick={toggleFullscreen} className="px-3 py-1.5 bg-slate-100 hover:bg-slate-200 rounded-lg text-xs flex items-center gap-1.5">
-              <Maximize2 className="w-3.5 h-3.5" />
+            <button onClick={toggleFullscreen} className="px-3 py-2 bg-white/60 hover:bg-white/90 backdrop-blur-md border border-white/40 hover:shadow-lg rounded-xl text-xs font-semibold flex items-center gap-2 transition-all duration-300 hover:scale-105 cursor-pointer">
+              <Maximize2 className="w-4 h-4" />
               <span>Tela Cheia</span>
             </button>
-            <select value={funilFilter} onChange={(e) => setFunilFilter(e.target.value)} className="px-3 py-1.5 bg-white border rounded-lg text-xs">
+            <select value={funilFilter} onChange={(e) => setFunilFilter(e.target.value)} className="px-3 py-2 bg-white/60 backdrop-blur-md border border-white/40 hover:shadow-lg rounded-xl text-xs font-semibold transition-all duration-300 cursor-pointer">
               <option value="todos">Todos</option>
               <option value="SS">SS</option>
               <option value="Quiz">Quiz</option>
               <option value="Isca">Isca</option>
             </select>
-            <select value={mes} onChange={(e) => setMes(parseInt(e.target.value))} className="px-3 py-1.5 bg-white border rounded-lg text-xs">
+            <select value={mes} onChange={(e) => setMes(parseInt(e.target.value))} className="px-3 py-2 bg-white/60 backdrop-blur-md border border-white/40 hover:shadow-lg rounded-xl text-xs font-semibold transition-all duration-300 cursor-pointer">
               {Array.from({ length: 12 }, (_, i) => (
                 <option key={i + 1} value={i + 1}>{getMesNome(i + 1)}</option>
               ))}
             </select>
-            <select value={ano} onChange={(e) => setAno(parseInt(e.target.value))} className="px-3 py-1.5 bg-white border rounded-lg text-xs">
+            <select value={ano} onChange={(e) => setAno(parseInt(e.target.value))} className="px-3 py-2 bg-white/60 backdrop-blur-md border border-white/40 hover:shadow-lg rounded-xl text-xs font-semibold transition-all duration-300 cursor-pointer">
               <option value={2025}>2025</option>
               <option value={2026}>2026</option>
             </select>
@@ -480,15 +481,15 @@ return (
         </div>
       </div>
 
-      {/* Modal de Métrica Expandida */}
+      {/* Modal de Métrica Expandida Glassmorphism */}
       {expandedMetric && (
-        <div className="fixed inset-0 bg-black/70 flex items-center justify-center z-50 p-4" onClick={() => setExpandedMetric(null)}>
-          <div className="bg-white rounded-2xl shadow-2xl max-w-4xl w-full p-8" onClick={(e) => e.stopPropagation()}>
+        <div className="fixed inset-0 bg-black/70 backdrop-blur-sm flex items-center justify-center z-50 p-4" onClick={() => setExpandedMetric(null)}>
+          <div className="backdrop-blur-xl bg-white/90 border border-white/40 rounded-2xl shadow-2xl max-w-4xl w-full p-8" onClick={(e) => e.stopPropagation()}>
             <div className="flex items-center justify-between mb-6">
-              <h2 className="text-2xl font-bold text-slate-900">{expandedMetric.tipo}</h2>
-              <button onClick={() => setExpandedMetric(null)} className="text-slate-400 hover:text-slate-600 text-3xl">×</button>
+              <h2 className="text-3xl font-extrabold bg-gradient-to-r from-blue-600 to-indigo-600 bg-clip-text text-transparent">{expandedMetric.tipo}</h2>
+              <button onClick={() => setExpandedMetric(null)} className="text-slate-400 hover:text-slate-600 text-4xl transition-all duration-200 hover:scale-110 cursor-pointer">×</button>
             </div>
-            <div className="text-sm text-slate-600">
+            <div className="text-base text-slate-700 font-semibold">
               Histórico detalhado e análise para {expandedMetric.tipo} será exibido aqui.
             </div>
           </div>
