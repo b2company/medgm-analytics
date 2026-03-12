@@ -613,26 +613,41 @@ return (
               </div>
 
               {/* Gráfico de Evolução */}
-              {(expandedMetric.data?.acumulado_vendas || expandedMetric.data?.acumulado_faturamento) && (
-                <div className="bg-white p-6 rounded-xl border border-slate-200 shadow-md">
-                  <h3 className="text-lg font-bold text-slate-800 mb-4">📈 Evolução no Mês</h3>
-                  <ResponsiveContainer width="100%" height={250}>
-                    <LineChart data={
-                      expandedMetric.tipo.includes('Faturamento')
-                        ? expandedMetric.data?.acumulado_faturamento
-                        : expandedMetric.data?.acumulado_vendas
-                    }>
-                      <CartesianGrid strokeDasharray="3 3" stroke="#e2e8f0" />
-                      <XAxis dataKey="dia" tick={{ fontSize: 12 }} />
-                      <YAxis tick={{ fontSize: 12 }} />
-                      <Tooltip />
-                      <Legend />
-                      <Line dataKey="meta_acumulada" stroke="#94a3b8" strokeWidth={2} name="Meta" />
-                      <Line dataKey="acumulado" stroke="#3b82f6" strokeWidth={2} name="Realizado" />
-                    </LineChart>
-                  </ResponsiveContainer>
-                </div>
-              )}
+              {(() => {
+                let dadosGrafico = null;
+                let formatter = null;
+
+                if (expandedMetric.metricaKey === 'faturamento') {
+                  dadosGrafico = expandedMetric.data?.acumulado_faturamento;
+                  formatter = (value) => formatCurrency(value);
+                } else if (expandedMetric.metricaKey === 'vendas') {
+                  dadosGrafico = expandedMetric.data?.acumulado_vendas;
+                  formatter = (value) => formatNumber(value);
+                } else if (expandedMetric.metricaKey === 'reunioes_realizadas') {
+                  dadosGrafico = expandedMetric.data?.acumulado_reunioes;
+                  formatter = (value) => formatNumber(value);
+                } else if (expandedMetric.metricaKey === 'leads_marketing' || expandedMetric.metricaKey === 'leads_ss') {
+                  dadosGrafico = expandedMetric.data?.acumulado_leads;
+                  formatter = (value) => formatNumber(value);
+                }
+
+                return dadosGrafico && dadosGrafico.length > 0 ? (
+                  <div className="bg-white p-6 rounded-xl border border-slate-200 shadow-md">
+                    <h3 className="text-lg font-bold text-slate-800 mb-4">📈 Evolução no Mês</h3>
+                    <ResponsiveContainer width="100%" height={250}>
+                      <LineChart data={dadosGrafico}>
+                        <CartesianGrid strokeDasharray="3 3" stroke="#e2e8f0" />
+                        <XAxis dataKey="dia" tick={{ fontSize: 12 }} />
+                        <YAxis tick={{ fontSize: 12 }} />
+                        <Tooltip formatter={formatter} contentStyle={{ fontSize: '12px' }} />
+                        <Legend />
+                        <Line dataKey="meta_acumulada" stroke="#94a3b8" strokeWidth={2} name="Meta" />
+                        <Line dataKey="acumulado" stroke="#3b82f6" strokeWidth={2} name="Realizado" />
+                      </LineChart>
+                    </ResponsiveContainer>
+                  </div>
+                ) : null;
+              })()}
 
               {/* Comparação com Meses Anteriores */}
               {loadingHistorico ? (
