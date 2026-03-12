@@ -2,7 +2,7 @@ import React, { useState, useEffect } from 'react';
 import { getDashboardGeral } from '../services/api';
 import { formatNumber, formatCurrency, formatPercent } from '../utils/formatters';
 import { AlertTriangle, Zap, TrendingUp, TrendingDown, ChevronDown, Calendar, Filter, Maximize2, Expand } from 'lucide-react';
-import { LineChart, Line, AreaChart, Area, XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer, Legend } from 'recharts';
+import { LineChart, Line, AreaChart, Area, BarChart, Bar, XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer, Legend } from 'recharts';
 import FunilBarras from '../components/FunilBarras';
 import KPICard from '../components/KPICard';
 import SecaoExpansivel from '../components/SecaoExpansivel';
@@ -11,7 +11,9 @@ import TabelaRanking from '../components/TabelaRanking';
 const DashboardGeralExecutivo = ({ mes: mesProp, ano: anoProp }) => {
   const [data, setData] = useState(null);
   const [dataMesAnterior, setDataMesAnterior] = useState(null);
+  const [dadosHistorico, setDadosHistorico] = useState([]);
   const [loading, setLoading] = useState(true);
+  const [loadingHistorico, setLoadingHistorico] = useState(false);
   const [funilFilter, setFunilFilter] = useState('todos');
   const [mes, setMes] = useState(mesProp);
   const [ano, setAno] = useState(anoProp);
@@ -64,6 +66,36 @@ const DashboardGeralExecutivo = ({ mes: mesProp, ano: anoProp }) => {
     } finally {
       setLoading(false);
     }
+  };
+
+  const fetchHistorico = async (mesesRetroativos = 6) => {
+    setLoadingHistorico(true);
+    const historico = [];
+
+    for (let i = mesesRetroativos - 1; i >= 0; i--) {
+      let mesHistorico = mes - i;
+      let anoHistorico = ano;
+
+      while (mesHistorico <= 0) {
+        mesHistorico += 12;
+        anoHistorico -= 1;
+      }
+
+      try {
+        const response = await getDashboardGeral(mesHistorico, anoHistorico, funilFilter);
+        historico.push({
+          mes: mesHistorico,
+          ano: anoHistorico,
+          mesNome: getMesNome(mesHistorico),
+          data: response
+        });
+      } catch (error) {
+        console.error(`Erro ao buscar dados de ${mesHistorico}/${anoHistorico}:`, error);
+      }
+    }
+
+    setDadosHistorico(historico);
+    setLoadingHistorico(false);
   };
 
   // Funções de utilidade
@@ -256,7 +288,10 @@ return (
             variacao={variacaoFaturamento || 0}
             valorAnterior={getValorMesAnteriorAteDia(dataMesAnterior?.comercial?.acumulado_faturamento, diaAtual)}
             valorAnteriorFormatado={formatCurrency(getValorMesAnteriorAteDia(dataMesAnterior?.comercial?.acumulado_faturamento, diaAtual)).replace('.', '')}
-            onClick={() => setExpandedMetric({ tipo: 'Faturamento', data: comercial })}
+            onClick={() => {
+              fetchHistorico(6);
+              setExpandedMetric({ tipo: 'Faturamento', data: comercial, metricaKey: 'faturamento' });
+            }}
           />
           <KPICard
             titulo="Vendas"
@@ -268,7 +303,10 @@ return (
             variacao={variacaoVendas || 0}
             valorAnterior={getValorMesAnteriorAteDia(dataMesAnterior?.comercial?.acumulado_vendas, diaAtual)}
             valorAnteriorFormatado={getValorMesAnteriorAteDia(dataMesAnterior?.comercial?.acumulado_vendas, diaAtual).toString()}
-            onClick={() => setExpandedMetric({ tipo: 'Vendas', data: comercial })}
+            onClick={() => {
+              fetchHistorico(6);
+              setExpandedMetric({ tipo: 'Vendas', data: comercial, metricaKey: 'vendas' });
+            }}
           />
           <KPICard
             titulo="Reuniões Realizadas"
@@ -280,7 +318,10 @@ return (
             variacao={variacaoReunioes || 0}
             valorAnterior={dataMesAnterior?.comercial?.kpis?.reunioes_realizadas?.valor || 0}
             valorAnteriorFormatado={(dataMesAnterior?.comercial?.kpis?.reunioes_realizadas?.valor || 0).toString()}
-            onClick={() => setExpandedMetric({ tipo: 'Reuniões', data: comercial })}
+            onClick={() => {
+              fetchHistorico(6);
+              setExpandedMetric({ tipo: 'Reuniões', data: comercial, metricaKey: 'reunioes_realizadas' });
+            }}
           />
           <KPICard
             titulo="Leads Marketing"
@@ -292,7 +333,10 @@ return (
             variacao={variacaoLeadsMarketing || 0}
             valorAnterior={(dataMesAnterior?.comercial?.kpis?.leads?.valor || 0) - (dataMesAnterior?.social_selling?.kpis?.leads?.valor || 0)}
             valorAnteriorFormatado={((dataMesAnterior?.comercial?.kpis?.leads?.valor || 0) - (dataMesAnterior?.social_selling?.kpis?.leads?.valor || 0)).toString()}
-            onClick={() => setExpandedMetric({ tipo: 'Leads Marketing', data: comercial })}
+            onClick={() => {
+              fetchHistorico(6);
+              setExpandedMetric({ tipo: 'Leads Marketing', data: comercial, metricaKey: 'leads_marketing' });
+            }}
           />
           <KPICard
             titulo="Leads Social Selling"
@@ -304,7 +348,10 @@ return (
             variacao={variacaoLeadsSS || 0}
             valorAnterior={dataMesAnterior?.social_selling?.kpis?.leads?.valor || 0}
             valorAnteriorFormatado={(dataMesAnterior?.social_selling?.kpis?.leads?.valor || 0).toString()}
-            onClick={() => setExpandedMetric({ tipo: 'Leads SS', data: social_selling })}
+            onClick={() => {
+              fetchHistorico(6);
+              setExpandedMetric({ tipo: 'Leads SS', data: social_selling, metricaKey: 'leads_ss' });
+            }}
           />
         </div>
 
@@ -584,6 +631,160 @@ return (
                       <Line dataKey="acumulado" stroke="#3b82f6" strokeWidth={2} name="Realizado" />
                     </LineChart>
                   </ResponsiveContainer>
+                </div>
+              )}
+
+              {/* Comparação com Meses Anteriores */}
+              {loadingHistorico ? (
+                <div className="bg-white p-6 rounded-xl border border-slate-200 shadow-md">
+                  <div className="flex items-center justify-center py-8">
+                    <div className="animate-spin rounded-full h-8 w-8 border-4 border-blue-600 border-t-transparent"></div>
+                    <span className="ml-3 text-slate-600">Carregando histórico...</span>
+                  </div>
+                </div>
+              ) : dadosHistorico.length > 0 && (
+                <div className="bg-white p-6 rounded-xl border border-slate-200 shadow-md">
+                  <h3 className="text-lg font-bold text-slate-800 mb-4">📊 Comparação com Meses Anteriores</h3>
+
+                  {/* Gráfico de Barras Comparativo */}
+                  <ResponsiveContainer width="100%" height={250}>
+                    <BarChart data={dadosHistorico.map(item => {
+                      let valor = 0;
+                      let meta = 0;
+
+                      if (expandedMetric.metricaKey === 'faturamento') {
+                        valor = item.data?.comercial?.kpis?.faturamento?.valor || 0;
+                        meta = item.data?.comercial?.kpis?.faturamento?.meta || 0;
+                      } else if (expandedMetric.metricaKey === 'vendas') {
+                        valor = item.data?.comercial?.kpis?.vendas?.valor || 0;
+                        meta = item.data?.comercial?.kpis?.vendas?.meta || 0;
+                      } else if (expandedMetric.metricaKey === 'reunioes_realizadas') {
+                        valor = item.data?.comercial?.kpis?.reunioes_realizadas?.valor || 0;
+                        meta = item.data?.comercial?.kpis?.reunioes_realizadas?.meta || 0;
+                      } else if (expandedMetric.metricaKey === 'leads_marketing') {
+                        valor = (item.data?.comercial?.kpis?.leads?.valor || 0) - (item.data?.social_selling?.kpis?.leads?.valor || 0);
+                        meta = (item.data?.comercial?.kpis?.leads?.meta || 0) - (item.data?.social_selling?.kpis?.leads?.meta || 0);
+                      } else if (expandedMetric.metricaKey === 'leads_ss') {
+                        valor = item.data?.social_selling?.kpis?.leads?.valor || 0;
+                        meta = item.data?.social_selling?.kpis?.leads?.meta || 0;
+                      }
+
+                      return {
+                        mes: `${item.mesNome.substring(0, 3)}/${item.ano.toString().substring(2)}`,
+                        Realizado: valor,
+                        Meta: meta
+                      };
+                    })}>
+                      <CartesianGrid strokeDasharray="3 3" stroke="#e2e8f0" />
+                      <XAxis dataKey="mes" tick={{ fontSize: 11 }} />
+                      <YAxis tick={{ fontSize: 11 }} />
+                      <Tooltip
+                        formatter={(value) => expandedMetric.tipo.includes('Faturamento') ? formatCurrency(value) : formatNumber(value)}
+                        contentStyle={{ fontSize: '12px' }}
+                      />
+                      <Legend />
+                      <Bar dataKey="Meta" fill="#94a3b8" />
+                      <Bar dataKey="Realizado" fill="#3b82f6" />
+                    </BarChart>
+                  </ResponsiveContainer>
+
+                  {/* Tabela Comparativa */}
+                  <div className="mt-6 overflow-x-auto">
+                    <table className="w-full text-sm">
+                      <thead>
+                        <tr className="border-b-2 border-slate-200">
+                          <th className="text-left py-2 px-3 font-semibold text-slate-700">Mês</th>
+                          <th className="text-right py-2 px-3 font-semibold text-slate-700">Realizado</th>
+                          <th className="text-right py-2 px-3 font-semibold text-slate-700">Meta</th>
+                          <th className="text-right py-2 px-3 font-semibold text-slate-700">%</th>
+                          <th className="text-right py-2 px-3 font-semibold text-slate-700">MoM</th>
+                        </tr>
+                      </thead>
+                      <tbody>
+                        {dadosHistorico.map((item, idx) => {
+                          let valor = 0;
+                          let meta = 0;
+
+                          if (expandedMetric.metricaKey === 'faturamento') {
+                            valor = item.data?.comercial?.kpis?.faturamento?.valor || 0;
+                            meta = item.data?.comercial?.kpis?.faturamento?.meta || 0;
+                          } else if (expandedMetric.metricaKey === 'vendas') {
+                            valor = item.data?.comercial?.kpis?.vendas?.valor || 0;
+                            meta = item.data?.comercial?.kpis?.vendas?.meta || 0;
+                          } else if (expandedMetric.metricaKey === 'reunioes_realizadas') {
+                            valor = item.data?.comercial?.kpis?.reunioes_realizadas?.valor || 0;
+                            meta = item.data?.comercial?.kpis?.reunioes_realizadas?.meta || 0;
+                          } else if (expandedMetric.metricaKey === 'leads_marketing') {
+                            valor = (item.data?.comercial?.kpis?.leads?.valor || 0) - (item.data?.social_selling?.kpis?.leads?.valor || 0);
+                            meta = (item.data?.comercial?.kpis?.leads?.meta || 0) - (item.data?.social_selling?.kpis?.leads?.meta || 0);
+                          } else if (expandedMetric.metricaKey === 'leads_ss') {
+                            valor = item.data?.social_selling?.kpis?.leads?.valor || 0;
+                            meta = item.data?.social_selling?.kpis?.leads?.meta || 0;
+                          }
+
+                          const perc = meta > 0 ? (valor / meta * 100) : 0;
+
+                          // Calcular MoM
+                          let mom = null;
+                          if (idx > 0) {
+                            const valorAnterior = (() => {
+                              const itemAnterior = dadosHistorico[idx - 1];
+                              if (expandedMetric.metricaKey === 'faturamento') {
+                                return itemAnterior.data?.comercial?.kpis?.faturamento?.valor || 0;
+                              } else if (expandedMetric.metricaKey === 'vendas') {
+                                return itemAnterior.data?.comercial?.kpis?.vendas?.valor || 0;
+                              } else if (expandedMetric.metricaKey === 'reunioes_realizadas') {
+                                return itemAnterior.data?.comercial?.kpis?.reunioes_realizadas?.valor || 0;
+                              } else if (expandedMetric.metricaKey === 'leads_marketing') {
+                                return (itemAnterior.data?.comercial?.kpis?.leads?.valor || 0) - (itemAnterior.data?.social_selling?.kpis?.leads?.valor || 0);
+                              } else if (expandedMetric.metricaKey === 'leads_ss') {
+                                return itemAnterior.data?.social_selling?.kpis?.leads?.valor || 0;
+                              }
+                              return 0;
+                            })();
+
+                            if (valorAnterior > 0) {
+                              mom = ((valor - valorAnterior) / valorAnterior * 100);
+                            }
+                          }
+
+                          const isCurrentMonth = item.mes === mes && item.ano === ano;
+
+                          return (
+                            <tr key={idx} className={`border-b border-slate-100 hover:bg-slate-50 ${isCurrentMonth ? 'bg-blue-50 font-semibold' : ''}`}>
+                              <td className="py-2 px-3">
+                                {item.mesNome} {item.ano}
+                                {isCurrentMonth && <span className="ml-2 text-xs text-blue-600">(Atual)</span>}
+                              </td>
+                              <td className="text-right py-2 px-3 font-medium">
+                                {expandedMetric.tipo.includes('Faturamento') ? formatCurrency(valor) : formatNumber(valor)}
+                              </td>
+                              <td className="text-right py-2 px-3 text-slate-600">
+                                {expandedMetric.tipo.includes('Faturamento') ? formatCurrency(meta) : formatNumber(meta)}
+                              </td>
+                              <td className={`text-right py-2 px-3 font-semibold ${
+                                perc >= 80 ? 'text-emerald-600' : perc >= 50 ? 'text-amber-600' : 'text-red-600'
+                              }`}>
+                                {perc.toFixed(0)}%
+                              </td>
+                              <td className="text-right py-2 px-3">
+                                {mom !== null ? (
+                                  <span className={`flex items-center justify-end gap-1 font-semibold ${
+                                    mom > 0 ? 'text-emerald-600' : mom < 0 ? 'text-red-600' : 'text-slate-600'
+                                  }`}>
+                                    {mom > 0 ? <TrendingUp className="w-3 h-3" /> : mom < 0 ? <TrendingDown className="w-3 h-3" /> : null}
+                                    {mom > 0 ? '+' : ''}{mom.toFixed(1)}%
+                                  </span>
+                                ) : (
+                                  <span className="text-slate-400">—</span>
+                                )}
+                              </td>
+                            </tr>
+                          );
+                        })}
+                      </tbody>
+                    </table>
+                  </div>
                 </div>
               )}
 
