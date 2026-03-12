@@ -437,44 +437,89 @@ return (
               />
             )}
 
-            {funil_origem && (
-              <SecaoExpansivel titulo="Por Origem" cor="amber">
-                <div className="space-y-2 text-xs">
+            {funil_origem && Object.keys(funil_origem).length > 0 ? (
+              <SecaoExpansivel titulo="Por Origem" cor="amber" defaultExpanded={true}>
+                <div className="space-y-3">
                   {funil_origem.ss && (
-                    <div className="p-2 bg-purple-50 rounded border border-purple-200">
-                      <div className="font-bold text-purple-900 mb-1">Social Selling</div>
-                      <div className="grid grid-cols-2 gap-1 text-[10px]">
-                        <span>Leads: {funil_origem.ss.leads}</span>
-                        <span>Vendas: {funil_origem.ss.vendas}</span>
-                        <span>Real: {funil_origem.ss.realizadas}</span>
-                        <span>Conv: {funil_origem.ss.tx_conversao}%</span>
+                    <div className="p-3 bg-gradient-to-br from-purple-50 to-white rounded-xl border border-purple-200 shadow-sm">
+                      <div className="font-bold text-purple-900 mb-2 text-sm">📱 Social Selling</div>
+                      <div className="grid grid-cols-2 gap-2">
+                        <div className="bg-white/60 p-2 rounded-lg">
+                          <div className="text-[9px] text-slate-600">Leads</div>
+                          <div className="text-base font-bold text-purple-900">{funil_origem.ss.leads || 0}</div>
+                        </div>
+                        <div className="bg-white/60 p-2 rounded-lg">
+                          <div className="text-[9px] text-slate-600">Vendas</div>
+                          <div className="text-base font-bold text-purple-900">{funil_origem.ss.vendas || 0}</div>
+                        </div>
+                        <div className="bg-white/60 p-2 rounded-lg">
+                          <div className="text-[9px] text-slate-600">Realizadas</div>
+                          <div className="text-base font-bold text-purple-900">{funil_origem.ss.realizadas || 0}</div>
+                        </div>
+                        <div className="bg-white/60 p-2 rounded-lg">
+                          <div className="text-[9px] text-slate-600">Conv.</div>
+                          <div className="text-base font-bold text-purple-900">{funil_origem.ss.tx_conversao || 0}%</div>
+                        </div>
                       </div>
                     </div>
                   )}
                   {funil_origem.isca && (
-                    <div className="p-2 bg-blue-50 rounded border border-blue-200">
-                      <div className="font-bold text-blue-900 mb-1">Isca Paga</div>
-                      <div className="grid grid-cols-2 gap-1 text-[10px]">
-                        <span>Leads: {funil_origem.isca.leads}</span>
-                        <span>Vendas: {funil_origem.isca.vendas}</span>
-                        <span>Real: {funil_origem.isca.realizadas}</span>
-                        <span>Conv: {funil_origem.isca.tx_conversao}%</span>
+                    <div className="p-3 bg-gradient-to-br from-blue-50 to-white rounded-xl border border-blue-200 shadow-sm">
+                      <div className="font-bold text-blue-900 mb-2 text-sm">🎣 Isca Paga</div>
+                      <div className="grid grid-cols-2 gap-2">
+                        <div className="bg-white/60 p-2 rounded-lg">
+                          <div className="text-[9px] text-slate-600">Leads</div>
+                          <div className="text-base font-bold text-blue-900">{funil_origem.isca.leads || 0}</div>
+                        </div>
+                        <div className="bg-white/60 p-2 rounded-lg">
+                          <div className="text-[9px] text-slate-600">Vendas</div>
+                          <div className="text-base font-bold text-blue-900">{funil_origem.isca.vendas || 0}</div>
+                        </div>
+                        <div className="bg-white/60 p-2 rounded-lg">
+                          <div className="text-[9px] text-slate-600">Realizadas</div>
+                          <div className="text-base font-bold text-blue-900">{funil_origem.isca.realizadas || 0}</div>
+                        </div>
+                        <div className="bg-white/60 p-2 rounded-lg">
+                          <div className="text-[9px] text-slate-600">Conv.</div>
+                          <div className="text-base font-bold text-blue-900">{funil_origem.isca.tx_conversao || 0}%</div>
+                        </div>
                       </div>
                     </div>
                   )}
                   {funil_origem.quiz && (
-                    <div className="p-2 bg-emerald-50 rounded border border-emerald-200">
-                      <div className="font-bold text-emerald-900 mb-1">Quiz</div>
-                      <div className="grid grid-cols-2 gap-1 text-[10px]">
-                        <span>Leads: {funil_origem.quiz.leads}</span>
-                        <span>Vendas: {funil_origem.quiz.vendas}</span>
-                        <span>Real: {funil_origem.quiz.realizadas}</span>
-                        <span>Conv: {funil_origem.quiz.tx_conversao}%</span>
+                    <div className="p-3 bg-gradient-to-br from-emerald-50 to-white rounded-xl border border-emerald-200 shadow-sm">
+                      <div className="font-bold text-emerald-900 mb-2 text-sm">❓ Quiz</div>
+                      <div className="grid grid-cols-2 gap-2">
+                        <div className="bg-white/60 p-2 rounded-lg">
+                          <div className="text-[9px] text-slate-600">Leads</div>
+                          <div className="text-base font-bold text-emerald-900">{funil_origem.quiz.leads || 0}</div>
+                        </div>
+                        <div className="bg-white/60 p-2 rounded-lg">
+                          <div className="text-[9px] text-slate-600">Vendas</div>
+                          <div className="text-base font-bold text-emerald-900">{funil_origem.quiz.vendas || 0}</div>
+                        </div>
+                        <div className="bg-white/60 p-2 rounded-lg">
+                          <div className="text-[9px] text-slate-600">Realizadas</div>
+                          <div className="text-base font-bold text-emerald-900">{funil_origem.quiz.realizadas || 0}</div>
+                        </div>
+                        <div className="bg-white/60 p-2 rounded-lg">
+                          <div className="text-[9px] text-slate-600">Conv.</div>
+                          <div className="text-base font-bold text-emerald-900">{funil_origem.quiz.tx_conversao || 0}%</div>
+                        </div>
                       </div>
+                    </div>
+                  )}
+                  {!funil_origem.ss && !funil_origem.isca && !funil_origem.quiz && (
+                    <div className="p-4 text-center text-slate-500 bg-slate-50 rounded-lg">
+                      <p className="text-sm">Nenhum dado de origem disponível para este período</p>
                     </div>
                   )}
                 </div>
               </SecaoExpansivel>
+            ) : (
+              <div className="p-4 bg-white rounded-xl border border-slate-200 text-center">
+                <p className="text-sm text-slate-500">Dados de origem não disponíveis</p>
+              </div>
             )}
           </div>
 
@@ -484,13 +529,119 @@ return (
       {/* Modal de Métrica Expandida Glassmorphism */}
       {expandedMetric && (
         <div className="fixed inset-0 bg-black/70 backdrop-blur-sm flex items-center justify-center z-50 p-4" onClick={() => setExpandedMetric(null)}>
-          <div className="backdrop-blur-xl bg-white/90 border border-white/40 rounded-2xl shadow-2xl max-w-4xl w-full p-8" onClick={(e) => e.stopPropagation()}>
+          <div className="backdrop-blur-xl bg-white/90 border border-white/40 rounded-2xl shadow-2xl max-w-6xl w-full max-h-[90vh] overflow-y-auto p-8" onClick={(e) => e.stopPropagation()}>
             <div className="flex items-center justify-between mb-6">
               <h2 className="text-3xl font-extrabold bg-gradient-to-r from-blue-600 to-indigo-600 bg-clip-text text-transparent">{expandedMetric.tipo}</h2>
               <button onClick={() => setExpandedMetric(null)} className="text-slate-400 hover:text-slate-600 text-4xl transition-all duration-200 hover:scale-110 cursor-pointer">×</button>
             </div>
-            <div className="text-base text-slate-700 font-semibold">
-              Histórico detalhado e análise para {expandedMetric.tipo} será exibido aqui.
+
+            {/* Conteúdo do Modal */}
+            <div className="space-y-6">
+              {/* KPIs Resumo */}
+              <div className="grid grid-cols-3 gap-4">
+                <div className="bg-gradient-to-br from-blue-50 to-white p-4 rounded-xl border border-blue-200">
+                  <div className="text-sm text-slate-600 mb-1">Realizado</div>
+                  <div className="text-2xl font-bold text-blue-600">
+                    {expandedMetric.tipo.includes('Faturamento')
+                      ? formatCurrency(expandedMetric.data?.kpis?.faturamento?.valor || 0)
+                      : (expandedMetric.data?.kpis?.vendas?.valor || expandedMetric.data?.kpis?.reunioes_realizadas?.valor || 0)
+                    }
+                  </div>
+                </div>
+                <div className="bg-gradient-to-br from-slate-50 to-white p-4 rounded-xl border border-slate-200">
+                  <div className="text-sm text-slate-600 mb-1">Meta</div>
+                  <div className="text-2xl font-bold text-slate-700">
+                    {expandedMetric.tipo.includes('Faturamento')
+                      ? formatCurrency(expandedMetric.data?.kpis?.faturamento?.meta || 0)
+                      : (expandedMetric.data?.kpis?.vendas?.meta || expandedMetric.data?.kpis?.reunioes_realizadas?.meta || 0)
+                    }
+                  </div>
+                </div>
+                <div className="bg-gradient-to-br from-emerald-50 to-white p-4 rounded-xl border border-emerald-200">
+                  <div className="text-sm text-slate-600 mb-1">Atingimento</div>
+                  <div className="text-2xl font-bold text-emerald-600">
+                    {(expandedMetric.data?.kpis?.faturamento?.perc || expandedMetric.data?.kpis?.vendas?.perc || expandedMetric.data?.kpis?.reunioes_realizadas?.perc || 0).toFixed(0)}%
+                  </div>
+                </div>
+              </div>
+
+              {/* Gráfico de Evolução */}
+              {(expandedMetric.data?.acumulado_vendas || expandedMetric.data?.acumulado_faturamento) && (
+                <div className="bg-white p-6 rounded-xl border border-slate-200 shadow-md">
+                  <h3 className="text-lg font-bold text-slate-800 mb-4">📈 Evolução no Mês</h3>
+                  <ResponsiveContainer width="100%" height={250}>
+                    <LineChart data={
+                      expandedMetric.tipo.includes('Faturamento')
+                        ? expandedMetric.data?.acumulado_faturamento
+                        : expandedMetric.data?.acumulado_vendas
+                    }>
+                      <CartesianGrid strokeDasharray="3 3" stroke="#e2e8f0" />
+                      <XAxis dataKey="dia" tick={{ fontSize: 12 }} />
+                      <YAxis tick={{ fontSize: 12 }} />
+                      <Tooltip />
+                      <Legend />
+                      <Line dataKey="meta_acumulada" stroke="#94a3b8" strokeWidth={2} name="Meta" />
+                      <Line dataKey="acumulado" stroke="#3b82f6" strokeWidth={2} name="Realizado" />
+                    </LineChart>
+                  </ResponsiveContainer>
+                </div>
+              )}
+
+              {/* Ranking por Pessoa */}
+              {expandedMetric.data?.por_pessoa && expandedMetric.data.por_pessoa.length > 0 && (
+                <div className="bg-white p-6 rounded-xl border border-slate-200 shadow-md">
+                  <h3 className="text-lg font-bold text-slate-800 mb-4">👥 Ranking Individual</h3>
+                  <div className="space-y-2">
+                    {expandedMetric.data.por_pessoa
+                      .sort((a, b) => (b.realizado || 0) - (a.realizado || 0))
+                      .slice(0, 10)
+                      .map((pessoa, idx) => {
+                        const perc = pessoa.meta > 0 ? (pessoa.realizado / pessoa.meta * 100) : 0;
+                        return (
+                          <div key={idx} className="flex items-center gap-4 p-3 bg-slate-50 rounded-lg hover:bg-slate-100 transition-colors">
+                            <div className="w-8 h-8 rounded-full bg-gradient-to-br from-blue-500 to-indigo-500 flex items-center justify-center text-white font-bold text-sm">
+                              {idx + 1}
+                            </div>
+                            <div className="flex-1">
+                              <div className="font-semibold text-slate-800">{pessoa.pessoa}</div>
+                              <div className="text-xs text-slate-500">{pessoa.area}</div>
+                            </div>
+                            <div className="text-right">
+                              <div className="font-bold text-slate-900">
+                                {expandedMetric.tipo.includes('Faturamento') ? formatCurrency(pessoa.realizado) : pessoa.realizado}
+                              </div>
+                              <div className={`text-xs font-semibold ${perc >= 80 ? 'text-emerald-600' : perc >= 50 ? 'text-amber-600' : 'text-red-600'}`}>
+                                {perc.toFixed(0)}% da meta
+                              </div>
+                            </div>
+                          </div>
+                        );
+                      })}
+                  </div>
+                </div>
+              )}
+
+              {/* Análise e Insights */}
+              <div className="bg-gradient-to-br from-indigo-50 to-blue-50 p-6 rounded-xl border border-indigo-200">
+                <h3 className="text-lg font-bold text-indigo-900 mb-4">💡 Análise Automática</h3>
+                <div className="grid grid-cols-2 gap-4 text-sm">
+                  <div className="bg-white/80 p-3 rounded-lg">
+                    <div className="text-slate-600 mb-1">Faltam para a meta</div>
+                    <div className="font-bold text-indigo-900">
+                      {expandedMetric.tipo.includes('Faturamento')
+                        ? formatCurrency((expandedMetric.data?.kpis?.faturamento?.meta || 0) - (expandedMetric.data?.kpis?.faturamento?.valor || 0))
+                        : ((expandedMetric.data?.kpis?.vendas?.meta || 0) - (expandedMetric.data?.kpis?.vendas?.valor || 0))
+                      }
+                    </div>
+                  </div>
+                  <div className="bg-white/80 p-3 rounded-lg">
+                    <div className="text-slate-600 mb-1">Dias restantes no mês</div>
+                    <div className="font-bold text-indigo-900">
+                      {new Date(ano, mes, 0).getDate() - new Date().getDate()} dias
+                    </div>
+                  </div>
+                </div>
+              </div>
             </div>
           </div>
         </div>
