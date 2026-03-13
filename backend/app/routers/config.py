@@ -744,3 +744,40 @@ async def seed_config(db: Session = Depends(get_db)):
     except Exception as e:
         db.rollback()
         raise HTTPException(status_code=500, detail=f"Erro ao criar configurações: {str(e)}")
+
+
+@router.delete("/clear-test-data")
+async def clear_test_data(db: Session = Depends(get_db)):
+    """
+    Limpa TODOS os dados de teste do banco.
+    CUIDADO: Esta operação não pode ser desfeita!
+    """
+    try:
+        from app.models.models import SocialSellingMetrica, SDRMetrica, CloserMetrica
+
+        # Contar antes de deletar
+        ss_count = db.query(SocialSellingMetrica).count()
+        sdr_count = db.query(SDRMetrica).count()
+        closer_count = db.query(CloserMetrica).count()
+
+        # Deletar tudo
+        db.query(SocialSellingMetrica).delete()
+        db.query(SDRMetrica).delete()
+        db.query(CloserMetrica).delete()
+
+        db.commit()
+
+        return {
+            "status": "success",
+            "message": "Todos os dados foram removidos",
+            "removidos": {
+                "social_selling": ss_count,
+                "sdr": sdr_count,
+                "closer": closer_count,
+                "total": ss_count + sdr_count + closer_count
+            }
+        }
+
+    except Exception as e:
+        db.rollback()
+        raise HTTPException(status_code=500, detail=f"Erro ao limpar dados: {str(e)}")
