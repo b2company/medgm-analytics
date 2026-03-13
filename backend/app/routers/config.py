@@ -781,3 +781,150 @@ async def clear_test_data(db: Session = Depends(get_db)):
     except Exception as e:
         db.rollback()
         raise HTTPException(status_code=500, detail=f"Erro ao limpar dados: {str(e)}")
+
+
+@router.get("/backup-data")
+async def backup_data(db: Session = Depends(get_db)):
+    """
+    Exporta TODOS os dados do banco em formato JSON.
+    Use este endpoint para fazer backups periódicos.
+    """
+    try:
+        from app.models.models import SocialSellingMetrica, SDRMetrica, CloserMetrica
+        from datetime import datetime
+
+        # Buscar todos os dados
+        social_selling = db.query(SocialSellingMetrica).all()
+        sdr = db.query(SDRMetrica).all()
+        closer = db.query(CloserMetrica).all()
+
+        # Converter para dicionários
+        backup = {
+            "backup_date": datetime.now().isoformat(),
+            "version": "1.0",
+            "data": {
+                "social_selling": [
+                    {
+                        "id": m.id,
+                        "data": m.data.isoformat() if m.data else None,
+                        "mes": m.mes,
+                        "ano": m.ano,
+                        "vendedor": m.vendedor,
+                        "ativacoes": m.ativacoes,
+                        "conversoes": m.conversoes,
+                        "leads_gerados": m.leads_gerados
+                    }
+                    for m in social_selling
+                ],
+                "sdr": [
+                    {
+                        "id": m.id,
+                        "data": m.data.isoformat() if m.data else None,
+                        "mes": m.mes,
+                        "ano": m.ano,
+                        "sdr": m.sdr,
+                        "funil": m.funil,
+                        "leads_recebidos": m.leads_recebidos,
+                        "reunioes_agendadas": m.reunioes_agendadas,
+                        "reunioes_realizadas": m.reunioes_realizadas
+                    }
+                    for m in sdr
+                ],
+                "closer": [
+                    {
+                        "id": m.id,
+                        "data": m.data.isoformat() if m.data else None,
+                        "mes": m.mes,
+                        "ano": m.ano,
+                        "closer": m.closer,
+                        "funil": m.funil,
+                        "calls_agendadas": m.calls_agendadas,
+                        "calls_realizadas": m.calls_realizadas,
+                        "vendas": m.vendas,
+                        "faturamento_bruto": m.faturamento_bruto
+                    }
+                    for m in closer
+                ]
+            },
+            "summary": {
+                "social_selling_count": len(social_selling),
+                "sdr_count": len(sdr),
+                "closer_count": len(closer),
+                "total_records": len(social_selling) + len(sdr) + len(closer)
+            }
+        }
+
+        return backup
+
+    except Exception as e:
+        raise HTTPException(status_code=500, detail=f"Erro ao fazer backup: {str(e)}")
+
+
+@router.post("/restore-data")
+async def restore_data(backup: dict, db: Session = Depends(get_db)):
+    """
+    Restaura dados de um backup JSON.
+    ATENÇÃO: Isso vai SUBSTITUIR todos os dados atuais!
+    """
+    try:
+        from app.models.models import SocialSellingMetrica, SDRMetrica, CloserMetrica
+        from datetime import datetime
+
+        # Limpar dados existentes
+        db.query(SocialSellingMetrica).delete()
+        db.query(SDRMetrica).delete()
+        db.query(CloserMetrica).delete()
+
+        # Restaurar Social Selling
+        for item in backup.get("data", {}).get("social_selling", []):
+            metrica = SocialSellingMetrica(
+                data=datetime.fromisoformat(item["data"]) if item.get("data") else None,
+                mes=item["mes"],
+                ano=item["ano"],
+                vendedor=item["vendedor"],
+                ativacoes=item["ativacoes"],
+                conversoes=item["conversoes"],
+                leads_gerados=item["leads_gerados"]
+            )
+            db.add(metrica)
+
+        # Restaurar SDR
+        for item in backup.get("data", {}).get("sdr", []):
+            metrica = SDRMetrica(
+                data=datetime.fromisoformat(item["data"]) if item.get("data") else None,
+                mes=item["mes"],
+                ano=item["ano"],
+                sdr=item["sdr"],
+                funil=item["funil"],
+                leads_recebidos=item["leads_recebidos"],
+                reunioes_agendadas=item["reunioes_agendadas"],
+                reunioes_realizadas=item["reunioes_realizadas"]
+            )
+            db.add(metrica)
+
+        # Restaurar Closer
+        for item in backup.get("data", {}).get("closer", []):
+            metrica = CloserMetrica(
+                data=datetime.fromisoformat(item["data"]) if item.get("data") else None,
+                mes=item["mes"],
+                ano=item["ano"],
+                closer=item["closer"],
+                funil=item["funil"],
+                calls_agendadas=item["calls_agendadas"],
+                calls_realizadas=item["calls_realizadas"],
+                vendas=item["vendas"],
+                faturamento_bruto=item.get("faturamento_bruto", 0)
+            )
+            db.add(metrica)
+
+        db.commit()
+
+        return {
+            "status": "success",
+            "message": "Dados restaurados com sucesso",
+            "restored": backup.get("summary", {})
+        }
+
+    except Exception as e:
+        db.rollback()
+        raise HTTPException(status_code=500, detail=f"Erro ao restaurar dados: {str(e)}")
