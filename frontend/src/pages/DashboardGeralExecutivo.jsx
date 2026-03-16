@@ -450,16 +450,16 @@ return (
               <TabelaRanking
                 titulo="SDRs"
                 cor="blue"
-                metricaPrincipal="calls"
+                metricaPrincipal="reunioes"
                 colunas={[
-                  { key: 'calls', label: 'Calls', formatter: formatNumber }
+                  { key: 'reunioes', label: 'Reuniões', formatter: formatNumber }
                 ]}
                 dados={comercial.por_pessoa.filter(p => p.area === 'SDR').map(sdr => ({
                   nome: sdr.pessoa,
                   role: 'SDR',
-                  calls: sdr.calls || 0,
-                  valor: sdr.calls || 0,
-                  meta: sdr.meta_calls || 0
+                  reunioes: sdr.realizado || 0,
+                  valor: sdr.realizado || 0,
+                  meta: sdr.meta || 0
                 }))}
               />
             )}
