@@ -57,6 +57,9 @@ async def export_financeiro(
 
         # Converter para DataFrame
         df = pd.DataFrame([{
+            'Mês': get_mes_nome(mes),
+            'Ano': ano,
+            'Período': f"{get_mes_nome(mes)}/{ano}",
             'ID': d.id,
             'Tipo': 'Entrada' if d.tipo == 'entrada' else 'Saída',
             'Data': d.data.strftime('%d/%m/%Y') if d.data else '',
@@ -79,6 +82,9 @@ async def export_financeiro(
 
         # Adicionar linha de totais
         totais_df = pd.DataFrame([{
+            'Mês': '',
+            'Ano': '',
+            'Período': '',
             'ID': '',
             'Tipo': 'TOTAL',
             'Data': '',
@@ -140,6 +146,9 @@ async def export_vendas(
             raise HTTPException(status_code=404, detail="Nenhuma venda encontrada para este período")
 
         df = pd.DataFrame([{
+            'Mês': get_mes_nome(mes),
+            'Ano': ano,
+            'Período': f"{get_mes_nome(mes)}/{ano}",
             'ID': d.id,
             'Data': d.data.strftime('%d/%m/%Y') if d.data else '',
             'Cliente': d.cliente or '',
@@ -162,6 +171,9 @@ async def export_vendas(
 
         # Adicionar linha de totais
         totais_df = pd.DataFrame([{
+            'Mês': '',
+            'Ano': '',
+            'Período': '',
             'ID': '',
             'Data': 'TOTAL',
             'Cliente': f'{total_vendas} vendas',
@@ -234,6 +246,9 @@ async def export_social_selling(
                     metas_dict[metrica.vendedor] = meta
 
         df = pd.DataFrame([{
+            'Mês': get_mes_nome(mes),
+            'Ano': ano,
+            'Período': f"{get_mes_nome(mes)}/{ano}",
             'Vendedor': d.vendedor,
             'Ativações': d.ativacoes,
             'Meta Ativações': metas_dict.get(d.vendedor).meta_ativacoes if d.vendedor in metas_dict else 0,
@@ -254,6 +269,9 @@ async def export_social_selling(
         total_meta_leads = sum(metas_dict.get(d.vendedor).meta_leads if d.vendedor in metas_dict else 0 for d in dados)
 
         totais_df = pd.DataFrame([{
+            'Mês': '',
+            'Ano': '',
+            'Período': '',
             'Vendedor': 'TOTAL',
             'Ativações': total_ativ,
             'Meta Ativações': total_meta_ativ,
@@ -314,6 +332,9 @@ async def export_sdr(
                     metas_dict[metrica.sdr] = meta
 
         df = pd.DataFrame([{
+            'Mês': get_mes_nome(mes),
+            'Ano': ano,
+            'Período': f"{get_mes_nome(mes)}/{ano}",
             'SDR': d.sdr,
             'Funil': d.funil,
             'Leads Recebidos': d.leads_recebidos,
@@ -371,6 +392,9 @@ async def export_closer(
                     metas_dict[metrica.closer] = meta
 
         df = pd.DataFrame([{
+            'Mês': get_mes_nome(mes),
+            'Ano': ano,
+            'Período': f"{get_mes_nome(mes)}/{ano}",
             'Closer': d.closer,
             'Funil': d.funil,
             'Calls Agendadas': d.calls_agendadas,
@@ -422,6 +446,9 @@ async def export_completo(
 
             if fin:
                 df_fin = pd.DataFrame([{
+                    'Mês': get_mes_nome(mes),
+                    'Ano': ano,
+                    'Período': f"{get_mes_nome(mes)}/{ano}",
                     'ID': d.id,
                     'Tipo': 'Entrada' if d.tipo == 'entrada' else 'Saída',
                     'Data': d.data.strftime('%d/%m/%Y') if d.data else '',
@@ -444,6 +471,9 @@ async def export_completo(
 
             if vendas:
                 df_vendas = pd.DataFrame([{
+                    'Mês': get_mes_nome(mes),
+                    'Ano': ano,
+                    'Período': f"{get_mes_nome(mes)}/{ano}",
                     'ID': d.id,
                     'Data': d.data.strftime('%d/%m/%Y') if d.data else '',
                     'Cliente': d.cliente or '',
@@ -468,6 +498,9 @@ async def export_completo(
 
             if ss:
                 df_ss = pd.DataFrame([{
+                    'Mês': get_mes_nome(mes),
+                    'Ano': ano,
+                    'Período': f"{get_mes_nome(mes)}/{ano}",
                     'Vendedor': d.vendedor,
                     'Ativações': d.ativacoes,
                     'Meta Ativações': d.meta_ativacoes,
@@ -491,6 +524,9 @@ async def export_completo(
 
             if sdr:
                 df_sdr = pd.DataFrame([{
+                    'Mês': get_mes_nome(mes),
+                    'Ano': ano,
+                    'Período': f"{get_mes_nome(mes)}/{ano}",
                     'SDR': d.sdr,
                     'Funil': d.funil,
                     'Leads': d.leads_recebidos,
@@ -514,6 +550,9 @@ async def export_completo(
 
             if closer:
                 df_closer = pd.DataFrame([{
+                    'Mês': get_mes_nome(mes),
+                    'Ano': ano,
+                    'Período': f"{get_mes_nome(mes)}/{ano}",
                     'Closer': d.closer,
                     'Funil': d.funil,
                     'Calls Agend.': d.calls_agendadas,
