@@ -59,7 +59,6 @@ async def export_financeiro(
         df = pd.DataFrame([{
             'Mês': get_mes_nome(mes),
             'Ano': ano,
-            'Período': f"{get_mes_nome(mes)}/{ano}",
             'ID': d.id,
             'Tipo': 'Entrada' if d.tipo == 'entrada' else 'Saída',
             'Data': d.data.strftime('%d/%m/%Y') if d.data else '',
@@ -84,7 +83,6 @@ async def export_financeiro(
         totais_df = pd.DataFrame([{
             'Mês': '',
             'Ano': '',
-            'Período': '',
             'ID': '',
             'Tipo': 'TOTAL',
             'Data': '',
@@ -148,7 +146,6 @@ async def export_vendas(
         df = pd.DataFrame([{
             'Mês': get_mes_nome(mes),
             'Ano': ano,
-            'Período': f"{get_mes_nome(mes)}/{ano}",
             'ID': d.id,
             'Data': d.data.strftime('%d/%m/%Y') if d.data else '',
             'Cliente': d.cliente or '',
@@ -173,7 +170,6 @@ async def export_vendas(
         totais_df = pd.DataFrame([{
             'Mês': '',
             'Ano': '',
-            'Período': '',
             'ID': '',
             'Data': 'TOTAL',
             'Cliente': f'{total_vendas} vendas',
@@ -248,7 +244,7 @@ async def export_social_selling(
         df = pd.DataFrame([{
             'Mês': get_mes_nome(mes),
             'Ano': ano,
-            'Período': f"{get_mes_nome(mes)}/{ano}",
+            'Data': f"01/{mes:02d}/{ano}",
             'Vendedor': d.vendedor,
             'Ativações': d.ativacoes,
             'Meta Ativações': metas_dict.get(d.vendedor).meta_ativacoes if d.vendedor in metas_dict else 0,
@@ -271,7 +267,7 @@ async def export_social_selling(
         totais_df = pd.DataFrame([{
             'Mês': '',
             'Ano': '',
-            'Período': '',
+            'Data': '',
             'Vendedor': 'TOTAL',
             'Ativações': total_ativ,
             'Meta Ativações': total_meta_ativ,
@@ -334,7 +330,7 @@ async def export_sdr(
         df = pd.DataFrame([{
             'Mês': get_mes_nome(mes),
             'Ano': ano,
-            'Período': f"{get_mes_nome(mes)}/{ano}",
+            'Data': f"01/{mes:02d}/{ano}",
             'SDR': d.sdr,
             'Funil': d.funil,
             'Leads Recebidos': d.leads_recebidos,
@@ -394,7 +390,7 @@ async def export_closer(
         df = pd.DataFrame([{
             'Mês': get_mes_nome(mes),
             'Ano': ano,
-            'Período': f"{get_mes_nome(mes)}/{ano}",
+            'Data': f"01/{mes:02d}/{ano}",
             'Closer': d.closer,
             'Funil': d.funil,
             'Calls Agendadas': d.calls_agendadas,
@@ -448,7 +444,6 @@ async def export_completo(
                 df_fin = pd.DataFrame([{
                     'Mês': get_mes_nome(mes),
                     'Ano': ano,
-                    'Período': f"{get_mes_nome(mes)}/{ano}",
                     'ID': d.id,
                     'Tipo': 'Entrada' if d.tipo == 'entrada' else 'Saída',
                     'Data': d.data.strftime('%d/%m/%Y') if d.data else '',
@@ -473,7 +468,6 @@ async def export_completo(
                 df_vendas = pd.DataFrame([{
                     'Mês': get_mes_nome(mes),
                     'Ano': ano,
-                    'Período': f"{get_mes_nome(mes)}/{ano}",
                     'ID': d.id,
                     'Data': d.data.strftime('%d/%m/%Y') if d.data else '',
                     'Cliente': d.cliente or '',
@@ -500,7 +494,7 @@ async def export_completo(
                 df_ss = pd.DataFrame([{
                     'Mês': get_mes_nome(mes),
                     'Ano': ano,
-                    'Período': f"{get_mes_nome(mes)}/{ano}",
+                    'Data': f"01/{mes:02d}/{ano}",
                     'Vendedor': d.vendedor,
                     'Ativações': d.ativacoes,
                     'Meta Ativações': d.meta_ativacoes,
@@ -526,7 +520,7 @@ async def export_completo(
                 df_sdr = pd.DataFrame([{
                     'Mês': get_mes_nome(mes),
                     'Ano': ano,
-                    'Período': f"{get_mes_nome(mes)}/{ano}",
+                    'Data': f"01/{mes:02d}/{ano}",
                     'SDR': d.sdr,
                     'Funil': d.funil,
                     'Leads': d.leads_recebidos,
@@ -552,7 +546,7 @@ async def export_completo(
                 df_closer = pd.DataFrame([{
                     'Mês': get_mes_nome(mes),
                     'Ano': ano,
-                    'Período': f"{get_mes_nome(mes)}/{ano}",
+                    'Data': f"01/{mes:02d}/{ano}",
                     'Closer': d.closer,
                     'Funil': d.funil,
                     'Calls Agend.': d.calls_agendadas,
