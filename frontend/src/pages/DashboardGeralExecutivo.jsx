@@ -408,6 +408,58 @@ return (
                 </div>
               </SecaoExpansivel>
             )}
+
+            {/* DISTRIBUIÇÃO POR FUNIL */}
+            {funil_origem && Object.keys(funil_origem).length > 0 && (
+              <SecaoExpansivel titulo="Distribuição por Funil" defaultExpanded={true} cor="indigo">
+                <div className="overflow-x-auto">
+                  <table className="w-full text-[10px]">
+                    <thead>
+                      <tr className="border-b border-slate-200">
+                        <th className="text-left py-1.5 px-2 font-bold text-slate-600">Funil</th>
+                        <th className="text-right py-1.5 px-2 font-bold text-slate-600">Leads</th>
+                        <th className="text-right py-1.5 px-2 font-bold text-slate-600">Calls Ag.</th>
+                        <th className="text-right py-1.5 px-2 font-bold text-slate-600">Calls Real.</th>
+                        <th className="text-right py-1.5 px-2 font-bold text-slate-600">Vendas</th>
+                        <th className="text-right py-1.5 px-2 font-bold text-slate-600">Tx Conv.</th>
+                      </tr>
+                    </thead>
+                    <tbody>
+                      {Object.entries(funil_origem).map(([chave, valores]) => {
+                        const nomeDisplay = chave === 'ss' ? 'SS' : chave.charAt(0).toUpperCase() + chave.slice(1);
+                        const txConv = valores.tx_conversao || 0;
+                        return (
+                          <tr key={chave} className="border-b border-slate-100 hover:bg-slate-50 transition-colors">
+                            <td className="py-1.5 px-2">
+                              <span className={`inline-block px-1.5 py-0.5 rounded text-[9px] font-bold ${
+                                chave === 'ss' ? 'bg-purple-100 text-purple-700' :
+                                chave === 'quiz' ? 'bg-amber-100 text-amber-700' :
+                                'bg-blue-100 text-blue-700'
+                              }`}>{nomeDisplay}</span>
+                            </td>
+                            <td className="text-right py-1.5 px-2 font-semibold text-slate-700">{formatNumber(valores.leads)}</td>
+                            <td className="text-right py-1.5 px-2 font-semibold text-slate-700">{formatNumber(valores.agendadas)}</td>
+                            <td className="text-right py-1.5 px-2 font-semibold text-slate-700">{formatNumber(valores.realizadas)}</td>
+                            <td className="text-right py-1.5 px-2 font-bold text-emerald-700">{formatNumber(valores.vendas)}</td>
+                            <td className={`text-right py-1.5 px-2 font-bold ${txConv >= 30 ? 'text-emerald-600' : txConv >= 15 ? 'text-amber-600' : 'text-red-500'}`}>
+                              {txConv.toFixed(1)}%
+                            </td>
+                          </tr>
+                        );
+                      })}
+                      <tr className="bg-slate-50 font-bold border-t-2 border-slate-300">
+                        <td className="py-1.5 px-2 text-slate-700">Total</td>
+                        <td className="text-right py-1.5 px-2 text-slate-700">{formatNumber(Object.values(funil_origem).reduce((s, v) => s + (v.leads || 0), 0))}</td>
+                        <td className="text-right py-1.5 px-2 text-slate-700">{formatNumber(Object.values(funil_origem).reduce((s, v) => s + (v.agendadas || 0), 0))}</td>
+                        <td className="text-right py-1.5 px-2 text-slate-700">{formatNumber(Object.values(funil_origem).reduce((s, v) => s + (v.realizadas || 0), 0))}</td>
+                        <td className="text-right py-1.5 px-2 text-emerald-700">{formatNumber(Object.values(funil_origem).reduce((s, v) => s + (v.vendas || 0), 0))}</td>
+                        <td className="text-right py-1.5 px-2 text-slate-500">—</td>
+                      </tr>
+                    </tbody>
+                  </table>
+                </div>
+              </SecaoExpansivel>
+            )}
           </div>
 
           {/* COLUNA CENTRAL: Funis (4 colunas) */}
