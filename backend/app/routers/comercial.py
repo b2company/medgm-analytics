@@ -2133,12 +2133,21 @@ async def dashboard_geral(
             }
         }
 
+        # ========== FUNIS DISPONÍVEIS (dinâmico) ==========
+
+        funis_disponiveis = db.query(CloserMetrica.funil).filter(
+            CloserMetrica.mes == mes,
+            CloserMetrica.ano == ano,
+            CloserMetrica.funil.isnot(None)
+        ).distinct().all()
+        funis_dinamicos = sorted(set(f[0] for f in funis_disponiveis if f[0]))
+
         # ========== FUNIL POR ORIGEM ==========
 
         funil_origem = {}
 
-        # Lista de funis para processar
-        funis_lista = ["SS", "Isca", "Quiz"]
+        # Lista de funis para processar (usa os funis reais do banco)
+        funis_lista = funis_dinamicos if funis_dinamicos else ["SS", "Isca", "Quiz"]
 
         for funil_nome in funis_lista:
             # SDR por funil
@@ -2261,7 +2270,8 @@ async def dashboard_geral(
                 "alerta_principal": gargalo_principal[2]
             },
             "funil_origem": funil_origem,
-            "mes_anterior": mes_anterior_data
+            "mes_anterior": mes_anterior_data,
+            "funis": funis_dinamicos
         }
 
     except Exception as e:

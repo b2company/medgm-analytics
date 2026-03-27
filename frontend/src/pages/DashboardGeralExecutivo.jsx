@@ -15,6 +15,7 @@ const DashboardGeralExecutivo = ({ mes: mesProp, ano: anoProp }) => {
   const [loading, setLoading] = useState(true);
   const [loadingHistorico, setLoadingHistorico] = useState(false);
   const [funilFilter, setFunilFilter] = useState('todos');
+  const [funis, setFunis] = useState([]);
   const [mes, setMes] = useState(mesProp);
   const [ano, setAno] = useState(anoProp);
   const [expandedSections, setExpandedSections] = useState({
@@ -50,6 +51,9 @@ const DashboardGeralExecutivo = ({ mes: mesProp, ano: anoProp }) => {
     try {
       const response = await getDashboardGeral(mes, ano, funilFilter);
       setData(response);
+      if (response.funis && response.funis.length > 0) {
+        setFunis(response.funis);
+      }
 
       // Buscar dados do mês anterior para comparação
       const mesAnterior = mes === 1 ? 12 : mes - 1;
@@ -255,10 +259,10 @@ return (
               <span>Tela Cheia</span>
             </button>
             <select value={funilFilter} onChange={(e) => setFunilFilter(e.target.value)} className="px-3 py-2 bg-white/60 backdrop-blur-md border border-white/40 hover:shadow-lg rounded-xl text-xs font-semibold transition-all duration-300 cursor-pointer">
-              <option value="todos">Todos</option>
-              <option value="SS">SS</option>
-              <option value="Quiz">Quiz</option>
-              <option value="Isca">Isca</option>
+              <option value="todos">Todos os Funis</option>
+              {funis.map(f => (
+                <option key={f} value={f}>{f}</option>
+              ))}
             </select>
             <select value={mes} onChange={(e) => setMes(parseInt(e.target.value))} className="px-3 py-2 bg-white/60 backdrop-blur-md border border-white/40 hover:shadow-lg rounded-xl text-xs font-semibold transition-all duration-300 cursor-pointer">
               {Array.from({ length: 12 }, (_, i) => (
